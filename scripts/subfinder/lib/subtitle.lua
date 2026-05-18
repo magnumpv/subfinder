@@ -3,6 +3,15 @@ local h = require "lib/helper"
 local subtitle    = {}
 subtitle.__index  = subtitle
 
+function subtitle:getEpisodeNumber(title)
+
+    return
+       string.match(title, "s0*%d+[%s%.%-]*e0*(%d+)")
+    or string.match(title, "%-[%s_]0*(%d+)")
+    or string.match(title, "0*%d+%s*x%s*0*(%d+)")
+    or string.match(title:gsub("%[[^%]]*%]", ""):gsub("%([^%)]*%)", ""), "0*(%d+)$")
+end
+
 function subtitle:properties(title)
 
     local platformMap = {
@@ -19,10 +28,16 @@ function subtitle:properties(title)
 
     --quality
 
-    if string.find(title, "blu[%s%-_]*ray") or string.find(title, "b[dr][%s%-_]*rip") or string.find(title, "remaster") or string.find(title, "extended") or string.find(title.." ", spaces.."bd"..spaces) then
+    if
+       string.find(title, "blu[%s%-_]*ray")
+    or string.find(title, "b[dr][%s%-_]*rip")
+    or string.find(title, "remaster")
+    or string.find(title, "extended")
+    or string.find(title.." ", spaces.."bd"..spaces)
+    then
 
         t.quality = "bd"
-    elseif string.find(title, "web[%s%-_]*dl") or string.find(title, "web[%s%-_]*rip") then
+    elseif string.find(title, "web[%s%-_]*dl") or string.find(title, "web[%s%-_]*rip") or string.find(title, spaces.."web"..spaces) then
 
         t.quality = "web"
     elseif string.find(title, "dvd") then
@@ -32,13 +47,11 @@ function subtitle:properties(title)
 
     --season
 
-    t.season = string.match(title, "s0?(%d+)[%s%.%-]*e")
+    t.season = string.match(title, "s0*(%d+)[%s%.%-]*e") or string.match(title, "0*(%d+)%s*x%s*0?%d+")
 
     --episode
 
-    t.episode = string.match(title, "s0?%d+[%s%.%-]*e0*(%d+)")
-
-    if not t.episode then t.episode = string.match(title, "%-[%s_]0*(%d+)") end --for anime
+    t.episode = self:getEpisodeNumber(title)
 
     --version
 

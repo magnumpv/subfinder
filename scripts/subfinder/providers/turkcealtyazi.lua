@@ -4,9 +4,22 @@ local subtitle = require "lib/subtitle"
 local request  = require "lib/request"
 local site     = base:new({
 
-    name = "Türkçe Altyazı",
-    url  = "https://turkcealtyazi.org"
+    name = "turkcealtyazi",
+    url  = "https://turkcealtyazi.org",
 })
+
+function site:getCategory(content)
+
+    if string.find(content, '<div class="altsonsez2') then
+
+        return "movie"
+    elseif string.find(content, '<div class="altsonsez1') then
+
+        return "series"
+    end
+
+    return nil
+end
 
 function site:getPage(queryParams)
 
@@ -29,7 +42,7 @@ function site:getPage(queryParams)
 
     --title search (with year)
 
-    if not content or not (string.find(content, "\"altsonsez2") or string.find(content, "\"altsonsez1")) then
+    if not (content and self:getCategory(content)) then
 
         content = request:timeout(15):sendRequest(self.url.."/filtre.php", {
 
@@ -52,15 +65,14 @@ function site:getPage(queryParams)
 
         local firstResult
 
-        if content then firstResult = content:match('href="/(mov/%d+/[^"]-)"') end
+        if content then firstResult = content:match('href="(/mov/%d+/[^"]-)"') end
 
-        if firstResult then
+        if not firstResult then return nil end
 
-            content = request:timeout(15):sendRequest(self.url.."/"..firstResult)
-        end
+        content = request:timeout(15):sendRequest(self.url..firstResult)
+
+        if not (content and self:getCategory(content)) then return nil end
     end
-
-    if not content or not (string.find(content, "\"altsonsez2") or string.find(content, "\"altsonsez1")) then return nil end
 
     return content
 end
@@ -89,7 +101,7 @@ function site:parse(content, queryParams)
         tr = "flagtr",
         en = "flagen"
     }
-    local isSeries      = string.find(content, '<div class="altsonsez1')
+    local category      = self:getCategory(content)
     local rows          = {}
     local dateConverter = function(raw)
 
@@ -133,13 +145,16 @@ function site:parse(content, queryParams)
         })
     end
 
-    if isSeries then
+    if category == "series" then
 
-        for row in content:gmatch('<div class="altsonsez1[^"]*sezon_'..queryParams.tags.s..'[^"]*"[^>]->(.-<div class="ta%-container">.-</div>%s*</div>)') do
+        local seasonNumber  = queryParams.tags.s or 1
+        local episodeNumber = queryParams.tags.e or 1
+
+        for row in content:gmatch('<div class="altsonsez1[^"]*sezon_'..seasonNumber..'[^"]*"[^>]->(.-<div class="ta%-container">.-</div>%s*</div>)') do
 
             local values = findValues(row)
 
-            if values and queryParams.tags.e and values.episode and (tostring(queryParams.tags.e) == tostring(values.episode) or tostring(values.episode) == "Paket") then
+            if values and values.episode and (tostring(episodeNumber) == tostring(values.episode) or tostring(values.episode) == "Paket") then
 
                 values.title = string.format("(S:%s-B:%s) %s", values.season, values.episode, values.title)
 

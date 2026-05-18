@@ -7,7 +7,7 @@ local request  = require "lib/request"
 local path     = require "lib/path"
 local site     = base:new({
 
-    name = "SubSource",
+    name = "subsource",
     url  = "https://api.subsource.net/api/v1"
 })
 

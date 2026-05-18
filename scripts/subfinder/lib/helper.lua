@@ -2,6 +2,70 @@ local utf8  = require "lib/fastutf8"
 local utils = require "mp.utils"
 local this  = {}
 
+function this.findBestSubtitle(videoFile, subtitleFiles)
+
+    local lastScore = 0
+    local bestSubtitle
+
+    for _, s in pairs(subtitleFiles) do
+
+        local score = this.similarityScore(videoFile, s)
+
+        if score > 0 and score > lastScore then bestSubtitle = s end
+
+        lastScore = score
+    end
+
+    return bestSubtitle
+end
+
+function this.tokenize(str)
+
+    str = str:lower():gsub("%.[^%.]-$", ""):gsub("%[[^%]]*%]", ""):gsub("%([^%)]*%)", ""):gsub("[^a-z0-9 ]", " ")
+
+    local list = {}
+
+    for val in str:gmatch("(%S+)") do list[val] = true end
+
+    return list
+end
+
+function this.similarityScore(a, b)
+
+    a                  = this.tokenize(a)
+    b                  = this.tokenize(b)
+    local intersection = 0
+    local union        = 0
+    local seen         = {}
+    local categories   = {ova = true, sp = true, special = true}
+    local aCategory    = ""
+    local bCategory    = ""
+
+    for k in pairs(a) do
+
+        seen[k] = true
+        union   = union + 1
+
+        if b[k] then intersection = intersection + 1 end
+
+        if categories[k] then aCategory = k end
+    end
+
+    for k in pairs(b) do
+
+        if not seen[k] then
+
+            union = union + 1
+        end
+
+        if categories[k] then bCategory = k end
+    end
+
+    if (aCategory ~= "" or bCategory ~= "") and aCategory ~= bCategory then return 0 end
+
+    return intersection / union
+end
+
 function this.scaleShape(drawing, scale)
 
     local result = {}
@@ -159,6 +223,8 @@ function this.listFiles(path, ext)
 
     local files = utils.readdir(path)
 
+    if not files then return nil end
+
     if ext then
 
         local extList = {}
@@ -169,9 +235,9 @@ function this.listFiles(path, ext)
 
         for _, f in ipairs(files) do
 
-            local e = string.match(f, "%.([^%.]-)$")
+            local e = this.getExt(f)
 
-            if extList[e] then table.insert(filtered, f) end
+            if e and extList[e] then table.insert(filtered, f) end
         end
 
         return #filtered > 0 and filtered or nil

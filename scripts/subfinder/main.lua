@@ -2,7 +2,7 @@
 
 ╔════════════════════════════════╗
 ║          MPV subfinder         ║
-║              v1.0.0            ║
+║              v1.0.1            ║
 ╚════════════════════════════════╝
 
 ]]
@@ -16,14 +16,15 @@ local h        = require "lib/helper"
 local subtitle = require "lib/subtitle"
 local gui      = require "lib/gui"
 local request  = require "lib/base"
+local msg      = require "mp.msg"
 config         = {
 
     --settings
     preferred_language = "en",
     smart_sorting      = false,
-    --auto_search        = false,
     useragent          = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
-
+    video_types        = "mkv,mp4,avi",
+    subtitle_types     = "srt,ass",
 
     --gui
     text_size          = 24,
@@ -56,14 +57,14 @@ local data            = {}
 local opened          = false
 local mouse           = {x = 0, y = 0}
 local offset          = 1
-local searchResults   = {}
 local currentIndex    = 1
 local message         = ""
 local titleProperties = {}
-local searching       = false
 local panel           = gui:new()
 local providers       = {}
 local currentLanguage = ""
+local search          = {timer = nil, text = "", results = {}, processing = false}
+local cachedPaths     = {}
 
 colors = {
 
@@ -189,23 +190,23 @@ resizeShapes()
 
 local function getQueryParams()
 
-    local searchedText = input.get_text()
+    local searched = search.text
 
     local findTag = function (name)
 
-        return searchedText:match(name..":(%S+)")
+        return searched:match(name..":(%S+)")
     end
 
     local getYear = function ()
 
-        local y = tonumber(searchedText:match(".+(%d%d%d%d)"))
+        local y = tonumber(searched:match(".+(%d%d%d%d)"))
 
         return (y and y > 1900 and y < 2050) and y or nil
     end
 
     return {
 
-        title = searchedText:gsub("%S+:%S+", ""):gsub("%d%d%d%d%s*$",""):gsub("%s+$", ""),
+        title = searched:gsub("%S+:%S+", ""):gsub("%d%d%d%d%s*$",""):gsub("%s+$", ""),
         year  = getYear(),
         tags  = {
 
@@ -238,27 +239,27 @@ local function cleanTitle()
     title = title:gsub("%d%d%d%d[%s_]+x[%s_]+%d%d%d", "")
 
     title =
-       title:match("^(.-)S%d+[%s%.%-]*E%d+")
+       title:match("^(.-)S%d+[%s%.%-]*E?%d+")
     or title:match("(.-)[%s_]%-[%s_]%d+")
     or title:match("^(.-)19%d%d[^pix]")
     or title:match("^(.-)20%d%d[^pix]")
     or title:match("^(.-)%d+p")
     or title
 
-    title = title:gsub("%[[^%]]*%]", ""):gsub("%([^%)]*%)", "") --quality info
+    title = title:gsub("%[[^%]]*%]", ""):gsub("%([^%)]*%)", "")
     title = title:gsub("[%(%[]", "")
-    title = title:gsub("[%._]", " ") --to whitespaces
+    title = title:gsub("[%._]", " ")
     title = title:gsub("[%s%-]+$", "")
-    if titleProperties.year then title = title:gsub(titleProperties.year, "") end --series with year
+    if titleProperties.year then title = title:gsub(titleProperties.year, "") end
     title = title:gsub("%s+", " ")
-    title = title:gsub("^%s*(.-)%s*$", "%1") --trim
+    title = title:gsub("^%s*(.-)%s*$", "%1")
 
     return title
 end
 
 local function fillData()
 
-    data.resultCount                    = #searchResults
+    data.resultCount                    = #search.results
     data.screenWidth, data.screenHeight = getScaledResolution()
     data.boxWidth, data.boxHeight       = data.screenWidth - config.padding * 2, data.screenHeight - config.padding * 2
     data.x, data.y                      = data.screenWidth / 2 - data.boxWidth / 2, config.padding
@@ -307,7 +308,7 @@ local function render()
 
             local posX, posY
             local hovered = currentIndex == k
-            local faded   = (searchResults[k].installed and not hovered) and true or false
+            local faded   = (search.results[k].installed and not hovered) and true or false
 
             --hover or stripped
 
@@ -333,16 +334,16 @@ local function render()
 
             --quality
 
-            if searchResults[k].quality then
+            if search.results[k].quality then
 
-                panel:properties({x = posX, y = posY, alpha = faded and 150 or 0}):tag(searchResults[k].quality)
+                panel:properties({x = posX, y = posY, alpha = faded and 150 or 0}):tag(search.results[k].quality)
 
                 posX = posX + panel:getLastWidth() + config.tag_right_margin
             end
 
             --hi
 
-            if searchResults[k].hi then
+            if search.results[k].hi then
 
                 panel:properties({x = posX, y = posY, alpha = faded and 150 or 0}):tag("hi")
 
@@ -351,7 +352,7 @@ local function render()
 
             --foreign
 
-            if searchResults[k].foreign then
+            if search.results[k].foreign then
 
                 panel:properties({x = posX, y = posY, alpha = faded and 150 or 0}):tag("foreign")
 
@@ -360,7 +361,7 @@ local function render()
 
             --bulk
 
-            if searchResults[k].bulk then
+            if search.results[k].bulk then
 
                 panel:properties({x = posX, y = posY, alpha = faded and 150 or 0}):tag("batch")
 
@@ -369,7 +370,7 @@ local function render()
 
             --title
 
-            panel:properties({x = posX, y = posY, align = 4, color = hovered and colors.hover or colors.text, alpha = faded and 150 or 0, clip = string.format("%s,%s,%s,%s", lineX, lineY, lineX + (data.boxWidth / 100 * 80), lineY + data.lineHeight)}):text(searchResults[k].title)
+            panel:properties({x = posX, y = posY, align = 4, color = hovered and colors.hover or colors.text, alpha = faded and 150 or 0, clip = string.format("%s,%s,%s,%s", lineX, lineY, lineX + (data.boxWidth / 100 * 80), lineY + data.lineHeight)}):text(search.results[k].title)
 
 
             posX = lineX + config.pin_right_margin
@@ -377,20 +378,20 @@ local function render()
 
             --uploader
 
-            panel:properties({x = posX, y = posY, color = hovered and colors.hover or colors.subtext, align = 4, alpha = faded and 150 or 0}):icon("uploader", searchResults[k].uploader)
+            panel:properties({x = posX, y = posY, color = hovered and colors.hover or colors.subtext, align = 4, alpha = faded and 150 or 0}):icon("uploader", search.results[k].uploader)
 
             --date
 
-            if searchResults[k].date then
+            if search.results[k].date then
 
-                panel:properties({x = posX + (data.boxWidth / 100 * config.column_width), y = posY, color = hovered and colors.hover or colors.subtext, align = 4, alpha = faded and 150 or 0}):icon("date", searchResults[k].date)
+                panel:properties({x = posX + (data.boxWidth / 100 * config.column_width), y = posY, color = hovered and colors.hover or colors.subtext, align = 4, alpha = faded and 150 or 0}):icon("date", search.results[k].date)
             end
 
             --download
 
-            if searchResults[k].downloads then
+            if search.results[k].downloads then
 
-                panel:properties({x = posX + (data.boxWidth / 100 * config.column_width * 2), y = posY, color = hovered and colors.hover or colors.subtext, align = 4, alpha = faded and 150 or 0}):icon("download", searchResults[k].downloads)
+                panel:properties({x = posX + (data.boxWidth / 100 * config.column_width * 2), y = posY, color = hovered and colors.hover or colors.subtext, align = 4, alpha = faded and 150 or 0}):icon("download", search.results[k].downloads)
             end
 
             posX = data.boxWidth
@@ -400,7 +401,7 @@ local function render()
 
             if hovered then
 
-                if searchResults[k].installed then
+                if search.results[k].installed then
 
                     panel:properties({x = posX, y = posY, color = colors.delete, align = 6, bold = true}):text("Delete")
                 else
@@ -409,7 +410,7 @@ local function render()
                 end
             else
 
-                panel:properties({x = posX, y = posY, color = colors.subtext, align = 6, bold = true}):text(searchResults[k].provider.name)
+                panel:properties({x = posX, y = posY, color = colors.subtext, align = 6, bold = true}):text(search.results[k].provider.name)
             end
 
             lineY = lineY + data.lineHeight
@@ -418,7 +419,7 @@ local function render()
 
         --scroll
 
-        if not searching and data.resultCount > data.lineCount then
+        if not search.processing and data.resultCount > data.lineCount then
 
             lineY      = data.y + config.text_size + config.padding * 2
             local barX = data.x + data.boxWidth - config.bar_width
@@ -447,8 +448,9 @@ end
 local function reset()
 
     h.clearTable(data)
-    h.clearTable(searchResults)
+    h.clearTable(search.results)
     h.clearTable(titleProperties)
+    h.clearTable(cachedPaths)
 
     mouse.x, mouse.y = 0, 0
     offset           = 1
@@ -463,20 +465,16 @@ local function showMessage(str)
     render()
 end
 
-local cachedPaths = {}
-
 local function getPath(key)
 
     if cachedPaths[key] then return cachedPaths[key] end
 
-    if key == "subtitle" then
+    if key == "video" then
 
         local fullPath      = mp.get_property("path")
         local dir, filename = utils.split_path(fullPath)
-
-        dir              = dir:gsub("[\\//]$", "")
-        filename         = filename:gsub("%.[^%.]+$", "")
-        cachedPaths[key] = path.join({dir, filename})
+        dir                 = dir:gsub("[\\//]$", "")
+        cachedPaths[key]    = dir
 
         return cachedPaths[key]
     elseif key == "cache" then
@@ -491,12 +489,12 @@ end
 
 local function downloadFile()
 
-    if not searchResults[currentIndex] then return end
+    if not search.results[currentIndex] then return end
 
     path.removeDir(getPath("cache"))
     path.createDir(getPath("cache"))
 
-    searchResults[currentIndex].provider:download(searchResults[currentIndex], getPath("cache"))
+    search.results[currentIndex].provider:download(search.results[currentIndex], getPath("cache"))
 
     local zipFiles = h.listFiles(getPath("cache"), "zip")
 
@@ -514,17 +512,103 @@ local function downloadFile()
         mp.osd_message("Subtitle file not found.", 3) return
     end
 
-    local subtitleFile = table.concat({getPath("subtitle"), currentLanguage, h.getExt(subFiles[1])}, ".")
+    local attachSubtitle = function(subtitleFile, videoFile)
 
-    if path.checkPath(subtitleFile) then path.removeFile(subtitleFile) end
+        local attachedSubtitleFile = path.join({getPath("video"), table.concat({videoFile:gsub("%.[^%.]-$", ""), currentLanguage, h.getExt(subtitleFile)}, ".")})
 
-    h.copyFile(path.join({getPath("cache"), subFiles[1]}), subtitleFile)
+        if path.checkPath(attachedSubtitleFile) then path.removeFile(attachedSubtitleFile) end
 
-    if path.checkPath(subtitleFile) then
+        h.copyFile(path.join({getPath("cache"), subtitleFile}), attachedSubtitleFile)
+    end
+
+    local videos        = h.listFiles(getPath("video"), config.video_types)
+    local subtitles     = h.listFiles(getPath("cache"), config.subtitle_types)
+    local videoCount    = videos    and #videos    or 0
+    local subtitleCount = subtitles and #subtitles or 0
+
+    if subtitleCount == 0 then mp.osd_message("Subtitle file not found.", 3) return end
+
+    local subtitleOfThisVideo   = ""
+    local attachedSubtitleCount = 0
+
+    if subtitleCount == 1 and videoCount == 1 then
+
+        attachSubtitle(subtitles[1], videos[1])
+
+        subtitleOfThisVideo   = subtitles[1]
+        attachedSubtitleCount = attachedSubtitleCount + 1
+    else
+
+        local episodes = {}
+
+        for _, s in pairs(subtitles) do
+
+            local eNumber = subtitle:getEpisodeNumber(s:lower())
+
+            if eNumber then
+
+                if not episodes[eNumber]           then episodes[eNumber]           = {} end
+                if not episodes[eNumber].subtitles then episodes[eNumber].subtitles = {} end
+
+                table.insert(episodes[eNumber].subtitles, s)
+            else
+
+                msg.warn("[subtitle matching] Episode number not found: "..s)
+            end
+        end
+
+        for _, v in pairs(videos) do
+
+            local eNumber = subtitle:getEpisodeNumber(v:lower())
+
+            if eNumber then
+
+                if episodes[eNumber] then
+
+                    if not episodes[eNumber].videos then episodes[eNumber].videos = {} end
+
+                    table.insert(episodes[eNumber].videos, v)
+                else
+
+                    msg.warn("[video matching] No subtitles found for this video: "..v)
+                end
+            else
+
+                msg.warn("[video matching] Episode number not found:"..v)
+            end
+        end
+
+        for eIndex, e in pairs(episodes) do
+
+            if e.videos then
+
+                for vIndex, v in pairs(e.videos) do
+
+                    local bestSubtitle = h.findBestSubtitle(v, e.subtitles)
+
+                    if bestSubtitle then
+
+                        if v:gsub("%.[^%.]-$", "") == titleProperties.name then subtitleOfThisVideo = bestSubtitle end
+
+                        attachSubtitle(bestSubtitle, v)
+
+                        attachedSubtitleCount = attachedSubtitleCount + 1
+                    end
+                end
+            end
+        end
+    end
+
+    if subtitleOfThisVideo ~= "" then
+
+        subtitleOfThisVideo = path.join({getPath("video"), table.concat({titleProperties.name, currentLanguage, h.getExt(subtitleOfThisVideo)}, ".")})
+
+        if path.checkPath(subtitleOfThisVideo) then mp.commandv("sub-add", subtitleOfThisVideo, "select") end
+    end
+
+    if attachedSubtitleCount > 0 then
 
         mp.osd_message("Download completed!", 3)
-
-        mp.commandv("sub-add", subtitleFile)
     else
 
         mp.osd_message("Download failed!", 3)
@@ -532,6 +616,15 @@ local function downloadFile()
 end
 
 local function submit()
+
+    h.clearTable(search.results)
+
+    data.resultCount = 0
+    data.lineCount   = 0
+    currentIndex     = 1
+    offset           = 1
+
+    fillData()
 
     local query = getQueryParams()
 
@@ -549,11 +642,11 @@ local function submit()
         return
     end
 
-    currentLanguage = query.tags.language
-    local sites     = h.splitString(config.sites_to_search)
-    local results   = {}
-    local steps     = 1
-    searching       = true
+    currentLanguage   = query.tags.language
+    local sites       = h.splitString(config.sites_to_search)
+    local results     = {}
+    local steps       = 1
+    search.processing = true
 
     --search
 
@@ -599,18 +692,21 @@ local function submit()
 
     for i, v in pairs(results) do
 
-        table.insert(searchResults, v)
+        table.insert(search.results, v)
     end
 
-    searching = false
+    search.processing = false
 
-    if #searchResults > 0 then
+    if #search.results > 0 then
 
         showMessage()
     else
 
         showMessage("No results found")
     end
+
+    fillData()
+    render()
 end
 
 local function togglePlayerControllers()
@@ -633,24 +729,28 @@ local function toggle()
         local filename       = mp.get_property("filename/no-ext")
         titleProperties      = subtitle:properties(filename)
         titleProperties.name = filename
-        input.font_size      = config.text_size
-        input.cursor_theme   = config.cursor_color
-        local searchedText   = cleanTitle()
 
-        if titleProperties.episode and not titleProperties.season then titleProperties.season = 1 end
+        if search.text == "" then
 
-        if titleProperties.year            then searchedText = searchedText.." "..titleProperties.year               end
-        if titleProperties.season          then searchedText = searchedText.." s:"..titleProperties.season           end
-        if titleProperties.episode         then searchedText = searchedText.." e:"..titleProperties.episode          end
-        if config.preferred_language ~= "" then searchedText = searchedText.." language:"..config.preferred_language end
+            local searched = cleanTitle()
 
-        input.default(searchedText)
+            if titleProperties.episode and not titleProperties.season then titleProperties.season = 1 end
 
-        message = "Press enter to confirm"
+            if titleProperties.year            then searched = searched.." "..titleProperties.year               end
+            if titleProperties.season          then searched = searched.." s:"..titleProperties.season           end
+            if titleProperties.episode         then searched = searched.." e:"..titleProperties.episode          end
+            if config.preferred_language ~= "" then searched = searched.." language:"..config.preferred_language end
 
-        if config.auto_search then submit() end
+            search.text = searched
+        end
 
-        fillData()
+        input.font_size    = config.text_size
+        input.cursor_theme = config.cursor_color
+
+        input.default(search.text)
+
+        submit()
+        --fillData()
         render()
         setBindings()
     else
@@ -678,11 +778,13 @@ local function setCurrentIndex()
 
             currentIndex = k
 
-            break
+            return true
         end
 
         lineY = lineY + data.lineHeight
     end
+
+    return false
 end
 
 local function bindingList()
@@ -690,6 +792,18 @@ local function bindingList()
     local inputBindings = input.bindings({
 
         after_changes = function()
+
+            local searched = input.get_text()
+
+            if searched ~= search.text then
+
+                message     = "Please wait..."
+                search.text = searched
+
+                if search.timer then search.timer:kill() end
+
+                search.timer = mp.add_timeout(3, submit)
+            end
 
             render()
         end
@@ -775,17 +889,11 @@ local function bindingList()
             key  = "enter",
             func = function ()
 
-                h.clearTable(searchResults)
+                if data.resultCount > 0 then
 
-                data.resultCount = 0
-                data.lineCount   = 0
-                currentIndex     = 1
-                offset           = 1
-
-                fillData()
-                submit()
-                fillData()
-                render()
+                    downloadFile()
+                    toggle()
+                end
             end,
             opts = nil
         },
@@ -795,7 +903,10 @@ local function bindingList()
             key  = "mbtn_left",
             func = function ()
 
-                downloadFile()
+                local isMouseOverRow = setCurrentIndex()
+
+                if isMouseOverRow then downloadFile() end
+
                 toggle()
             end,
             opts = nil
@@ -807,12 +918,12 @@ end
 
 function setBindings()
 
-    for name, binding in pairs(bindingList()) do mp.add_forced_key_binding(binding.key, "jumpto_"..name, binding.func, binding.opts) end
+    for name, binding in pairs(bindingList()) do mp.add_forced_key_binding(binding.key, "subfinder_"..name, binding.func, binding.opts) end
 end
 
 function unsetBindings()
 
-    for name in pairs(bindingList()) do mp.remove_key_binding("jumpto_"..name) end
+    for name in pairs(bindingList()) do mp.remove_key_binding("subfinder_"..name) end
 end
 
 mp.observe_property("mouse-pos", "native", function()

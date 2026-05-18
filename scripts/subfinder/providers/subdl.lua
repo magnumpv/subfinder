@@ -5,7 +5,7 @@ local subtitle = require "lib/subtitle"
 local request  = require "lib/request"
 local site     = base:new({
 
-    name = "SubdL",
+    name = "subdl",
     url  = {"https://api.subdl.com/api/v1", "https://dl.subdl.com"},
 })
 

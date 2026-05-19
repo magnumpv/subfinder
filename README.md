@@ -17,12 +17,32 @@ An MPV plugin for downloading subtitles from multiple sources.
 
 # 🧰Installation
 
-1. Place `scripts` and `script-opts` folders into your config directory.
+1. Install the plugin.
+
+### Manual
+
+Place `scripts` and `script-opts` folders into your config directory.
 
 | OS        | Location         |
 |-----------|------------------|
 | Windows   | `%appdata%/mpv/` |
 | GNU/Linux | `~/.config/mpv/` |
+
+### Automatic
+
+To install or update via command line:
+
+#### Windows 10 (CMD)
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/magnum357i/mpv-subfinder/HEAD/installers/windows.ps1 | iex"
+```
+
+#### Linux
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/magnum357i/mpv-subfinder/HEAD/installers/linux.sh | sh
+```
 
 2. Set up the API keys.
 3. Add the providers you want to use to `sites_to_search`.

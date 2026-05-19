@@ -69,8 +69,8 @@ https://github.com/user-attachments/assets/ffb7a48a-d19d-4536-9d5c-76f5acdcbea5
 
 | shortcut              | description         |
 |-----------------------|---------------------|
-| <kbd>Up</kbd>         | Previous Row        |
-| <kbd>Down</kbd>       | Next Row            |
+| <kbd>Up</kbd>         | Previous row        |
+| <kbd>Down</kbd>       | Next row            |
 | <kbd>Click</kbd>      | Download            |
 | <kbd>Enter</kbd>      | Download            |
 | <kbd>Ctrl+Click</kbd> | Go to subtitle page |

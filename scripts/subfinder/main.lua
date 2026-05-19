@@ -2,7 +2,7 @@
 
 ╔════════════════════════════════╗
 ║          MPV subfinder         ║
-║              v1.0.2            ║
+║              v1.0.3            ║
 ╚════════════════════════════════╝
 
 ]]
@@ -245,7 +245,7 @@ end
 
 local function cleanTitle()
 
-    local title = titleProperties.name
+    local title = h.removeExt(titleProperties.name)
 
     title = title:gsub("%d%d%d%d[%s_]+x[%s_]+%d%d%d", "")
 
@@ -551,9 +551,9 @@ local function downloadFile()
     local subtitleOfThisVideo   = ""
     local attachedSubtitleCount = 0
 
-    if not (query.season or query.episode) then
+    if not (query.tags and query.tags.s or query.tags.e) then
 
-        attachSubtitle(subtitles[1], videos[1])
+        attachSubtitle(subtitles[1], titleProperties.name)
 
         subtitleOfThisVideo   = subtitles[1]
         attachedSubtitleCount = attachedSubtitleCount + 1
@@ -604,11 +604,11 @@ local function downloadFile()
 
                 for vIndex, v in pairs(e.videos) do
 
-                    local bestSubtitle = h.findBestSubtitle(v, e.subtitles)
+                    local bestSubtitle = e.subtitles and #e.subtitles > 1 and h.findBestSubtitle(v, e.subtitles) or e.subtitles[1]
 
                     if bestSubtitle then
 
-                        if h.removeExt(v) == titleProperties.name then subtitleOfThisVideo = bestSubtitle end
+                        if v == titleProperties.name then subtitleOfThisVideo = bestSubtitle end
 
                         attachSubtitle(bestSubtitle, v)
 
@@ -621,7 +621,7 @@ local function downloadFile()
 
     if subtitleOfThisVideo ~= "" then
 
-        subtitleOfThisVideo = path.join({getPath("video"), table.concat({titleProperties.name, currentLanguage, h.getExt(subtitleOfThisVideo)}, ".")})
+        subtitleOfThisVideo = path.join({getPath("video"), table.concat({h.removeExt(titleProperties.name), currentLanguage, h.getExt(subtitleOfThisVideo)}, ".")})
 
         if path.checkPath(subtitleOfThisVideo) then mp.commandv("sub-add", subtitleOfThisVideo, "select") end
     end
@@ -781,8 +781,8 @@ local function toggle()
 
         input.init()
 
-        local filename       = mp.get_property("filename/no-ext")
-        titleProperties      = subtitle:properties(filename)
+        local filename       = mp.get_property("filename")
+        titleProperties      = subtitle:properties(h.removeExt(filename))
         titleProperties.name = filename
 
         if search.text == "" then
@@ -925,17 +925,6 @@ local function bindingList()
             func = function ()
 
                 toggle()
-            end,
-            opts = nil
-        },
-
-        copy = {
-
-            key  = "ctrl+c",
-            func = function ()
-
-                toggle()
-                setClipboard()
             end,
             opts = nil
         },

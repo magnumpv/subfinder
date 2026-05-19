@@ -1,3 +1,4 @@
+local msg      = require "mp.msg"
 local h        = require "lib/helper"
 local base     = require "lib/base"
 local subtitle = require "lib/subtitle"
@@ -5,7 +6,7 @@ local request  = require "lib/request"
 local site     = base:new({
 
     name = "turkcealtyazi",
-    url  = "https://turkcealtyazi.org",
+    url  = {site = "https://turkcealtyazi.org"}
 })
 
 function site:getCategory(content)
@@ -37,14 +38,14 @@ function site:getPage(queryParams)
 
     if queryParams.imdbId then
 
-        content = request:timeout(15):sendRequest(self.url.."/find.php", {cat = "sub", find = queryParams.imdbId})
+        content = request:timeout(15):sendRequest(self.url.site.."/find.php", {cat = "sub", find = queryParams.imdbId})
     end
 
     --title search (with year)
 
     if not (content and self:getCategory(content)) then
 
-        content = request:timeout(15):sendRequest(self.url.."/filtre.php", {
+        content = request:timeout(15):sendRequest(self.url.site.."/filtre.php", {
 
             tur      = "",
             tur2     = "",
@@ -69,7 +70,7 @@ function site:getPage(queryParams)
 
         if not firstResult then return nil end
 
-        content = request:timeout(15):sendRequest(self.url..firstResult)
+        content = request:timeout(15):sendRequest(self.url.site..firstResult)
 
         if not (content and self:getCategory(content)) then return nil end
     end
@@ -128,20 +129,26 @@ function site:parse(content, queryParams)
 
     local findValues = function(row)
 
+        local buildLink = function(link)
+
+            return link and self.url.site..link or nil
+        end
+
         if not row:match('class="'..languageMap[queryParams.tags.language]..'"') then return nil end
 
         return subtitle:new({
 
-            title     = request:stripTags(row:match('<a itemprop="url"[^>]->(.-)</a>')).." - "..request:stripTags(row:match('<div class="ripdiv">(.-)</div>')),
-            link      = row:match('href="(/sub/[^"]*)"'),
-            uploader  = request:stripTags(row:match('<div class="algonderen">(.-)</div>')),
-            downloads = row:match('<div class="alindirme">(.-)</div>'),
-            date      = row:match('<div class="datediv">(.-)</div>'),
-            quality   = qualityMap[row:match('<div class="ripdiv">%s*<span class="([^"]-)">')] or qualityMap[row:match('<div class="alcevirmen">%s*<span class="([^"]-)">')],
-            hi        = row:match("/images/isitme.png") and true or false,
-            season    = getSeason(request:stripTags(row:match('<div class="alcd">(.-)</div>'))),
-            episode   = getEpisode(request:stripTags(row:match('<div class="alcd">(.-)</div>'))),
-            provider  = self
+            title        = request:stripTags(row:match('<a itemprop="url"[^>]->(.-)</a>')).." - "..request:stripTags(row:match('<div class="ripdiv">(.-)</div>')),
+            pageLink     = buildLink(row:match('href="(/sub/[^"]*)"')),
+            downloadLink = buildLink(row:match('href="(/sub/[^"]*)"')),
+            uploader     = request:stripTags(row:match('<div class="algonderen">(.-)</div>')),
+            downloads    = row:match('<div class="alindirme">(.-)</div>'),
+            date         = row:match('<div class="datediv">(.-)</div>'),
+            quality      = qualityMap[row:match('<div class="ripdiv">%s*<span class="([^"]-)">')] or qualityMap[row:match('<div class="alcevirmen">%s*<span class="([^"]-)">')],
+            hi           = row:match("/images/isitme.png") and true or false,
+            season       = getSeason(request:stripTags(row:match('<div class="alcd">(.-)</div>'))),
+            episode      = getEpisode(request:stripTags(row:match('<div class="alcd">(.-)</div>'))),
+            provider     = self
         })
     end
 
@@ -179,12 +186,12 @@ function site:download(subtitle, savePath)
         msg.error("This subtitle belongs to a different provider!") return
     end
 
-    if not subtitle.link then
+    if not subtitle.downloadLink then
 
         msg.error("Subtitle link not found!") return
     end
 
-    local subtitlePageContent = request:timeout(15):sendRequest(self.url..subtitle.link)
+    local subtitlePageContent = request:timeout(15):sendRequest(subtitle.downloadLink)
 
     if not subtitlePageContent then return end
 
@@ -196,7 +203,7 @@ function site:download(subtitle, savePath)
 
     if not (form.idid and form.altid and form.sidid) then return end
 
-    request:timeout(30):postData(form):download(savePath):sendRequest(self.url.."/ind")
+    request:timeout(30):postData(form):download(savePath):sendRequest(self.url.site.."/ind")
 end
 
 return site

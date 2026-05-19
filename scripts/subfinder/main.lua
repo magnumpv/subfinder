@@ -2,7 +2,7 @@
 
 ╔════════════════════════════════╗
 ║          MPV subfinder         ║
-║              v1.0.1            ║
+║              v1.0.2            ║
 ╚════════════════════════════════╝
 
 ]]
@@ -25,6 +25,7 @@ config         = {
     useragent          = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
     video_types        = "mkv,mp4,avi",
     subtitle_types     = "srt,ass",
+    archive_types      = "zip,rar,7z",
 
     --gui
     text_size          = 24,
@@ -65,6 +66,8 @@ local providers       = {}
 local currentLanguage = ""
 local search          = {timer = nil, text = "", results = {}, processing = false}
 local cachedPaths     = {}
+local firstOpened     = true
+local query           = {}
 
 colors = {
 
@@ -154,7 +157,15 @@ flags = {
 
 for _, p in pairs(h.splitString(config.sites_to_search)) do
 
-    providers[p] = require("providers/"..p)
+    local ok, l = pcall(require, "providers/"..p)
+
+    if ok then
+
+        providers[p] = l
+    else
+
+        mp.osd_message("[subfinder] Unknown provider name: "..p, 10)
+    end
 end
 
 local function resizeShapes()
@@ -451,6 +462,7 @@ local function reset()
     h.clearTable(search.results)
     h.clearTable(titleProperties)
     h.clearTable(cachedPaths)
+    h.clearTable(query)
 
     mouse.x, mouse.y = 0, 0
     offset           = 1
@@ -487,6 +499,14 @@ local function getPath(key)
     return nil
 end
 
+local function openInBrowser()
+
+    if not search.results[currentIndex]          then msg.warn("Row not found!")  return end
+    if not search.results[currentIndex].pageLink then msg.warn("Link not found!") return end
+
+    h.visitTo(search.results[currentIndex].pageLink)
+end
+
 local function downloadFile()
 
     if not search.results[currentIndex] then return end
@@ -496,14 +516,14 @@ local function downloadFile()
 
     search.results[currentIndex].provider:download(search.results[currentIndex], getPath("cache"))
 
-    local zipFiles = h.listFiles(getPath("cache"), "zip")
+    local archiveFiles = h.listFiles(getPath("cache"), config.archive_types)
 
-    if not (zipFiles and zipFiles[1]) then
+    if not (archiveFiles and archiveFiles[1]) then
 
         mp.osd_message("Zip file not found.", 3) return
     end
 
-    h.unpackArchive(path.join({getPath("cache"), zipFiles[1]}), getPath("cache"))
+    h.unpackArchive(path.join({getPath("cache"), archiveFiles[1]}), getPath("cache"))
 
     local subFiles = h.listFiles(getPath("cache"), "ass,srt")
 
@@ -514,7 +534,7 @@ local function downloadFile()
 
     local attachSubtitle = function(subtitleFile, videoFile)
 
-        local attachedSubtitleFile = path.join({getPath("video"), table.concat({videoFile:gsub("%.[^%.]-$", ""), currentLanguage, h.getExt(subtitleFile)}, ".")})
+        local attachedSubtitleFile = path.join({getPath("video"), table.concat({h.removeExt(videoFile), currentLanguage, h.getExt(subtitleFile)}, ".")})
 
         if path.checkPath(attachedSubtitleFile) then path.removeFile(attachedSubtitleFile) end
 
@@ -531,7 +551,7 @@ local function downloadFile()
     local subtitleOfThisVideo   = ""
     local attachedSubtitleCount = 0
 
-    if subtitleCount == 1 and videoCount == 1 then
+    if not (query.season or query.episode) then
 
         attachSubtitle(subtitles[1], videos[1])
 
@@ -588,7 +608,7 @@ local function downloadFile()
 
                     if bestSubtitle then
 
-                        if v:gsub("%.[^%.]-$", "") == titleProperties.name then subtitleOfThisVideo = bestSubtitle end
+                        if h.removeExt(v) == titleProperties.name then subtitleOfThisVideo = bestSubtitle end
 
                         attachSubtitle(bestSubtitle, v)
 
@@ -617,6 +637,7 @@ end
 
 local function submit()
 
+    h.clearTable(query)
     h.clearTable(search.results)
 
     data.resultCount = 0
@@ -626,7 +647,7 @@ local function submit()
 
     fillData()
 
-    local query = getQueryParams()
+    query = getQueryParams()
 
     if not query.tags.language then
 
@@ -724,6 +745,40 @@ local function toggle()
 
     if not opened then
 
+        if firstOpened then
+
+            --site check
+
+            if config.sites_to_search:gsub("%s", "") == "" then
+
+                mp.osd_message("Please select at least one provider", 5) return
+            end
+
+            --APIs check
+
+            for _, p in pairs(h.splitString(config.sites_to_search)) do
+
+                if providers[p].url and providers[p].url.api and config["api_"..p]:gsub("%s", "") == "" then
+
+                    mp.osd_message(string.format("An API key is required for %s", p), 5) return
+                end
+            end
+
+            --dependencies check
+
+            local dependencies = {"7z", "curl"}
+
+            for _, d in pairs(dependencies) do
+
+                if not h.commandCheck(d) then
+
+                    mp.osd_message(string.format("Command not exists: %s", d), 5) return
+                end
+            end
+
+            firstOpened = false
+        end
+
         input.init()
 
         local filename       = mp.get_property("filename/no-ext")
@@ -753,6 +808,7 @@ local function toggle()
         --fillData()
         render()
         setBindings()
+
     else
 
         unsetBindings()
@@ -910,6 +966,26 @@ local function bindingList()
                 toggle()
             end,
             opts = nil
+        },
+
+        visit1 = {
+
+            key  = "ctrl+enter",
+            func = function ()
+
+                openInBrowser()
+            end,
+            opts = nil
+        },
+
+        visit2 = {
+
+            key  = "ctrl+mbtn_left",
+            func = function ()
+
+                openInBrowser()
+            end,
+            opts = nil
         }
     }
 
@@ -924,6 +1000,14 @@ end
 function unsetBindings()
 
     for name in pairs(bindingList()) do mp.remove_key_binding("subfinder_"..name) end
+end
+
+function titleMetadataTest()
+
+    local testTitle = "[anti-raws]K-ON!! ep.15[BDRemux]"
+
+    print(string.format("Parsing result for %s", testTitle))
+    h.log2(subtitle:properties(testTitle))
 end
 
 mp.observe_property("mouse-pos", "native", function()
@@ -947,6 +1031,11 @@ end)
 mp.observe_property("display-hidpi-scale", "native", function (name, value)
 
     if opened then fillData() render() end
+end)
+
+mp.register_event("file-loaded", function()
+
+    search.text = ""
 end)
 
 mp.add_key_binding("Ctrl+f", "subfinder", toggle)

@@ -12,6 +12,7 @@ An MPV plugin for downloading subtitles from multiple sources.
 
 # 🧲Dependencies
 
+- **7-Zip**
 - **cURL**
 - **API KEYS**
 
@@ -47,13 +48,35 @@ curl -fsSL https://raw.githubusercontent.com/magnum357i/mpv-subfinder/HEAD/insta
 2. Set up the API keys.
 3. Add the providers you want to use to `sites_to_search`.
 
+### 7-Zip (Windows Only)
+1. Install **7-Zip**.
+2. Add the **7-Zip** installation directory to your `PATH`.
+
+**Typical locations:**
+- `C:\Program Files\7-Zip`
+- `C:\Program Files (x86)\7-Zip`
+
+> [!NOTE]
+> I was planning to add **OpenSubtitles**, but its daily limit, even when logged in, is absurdly low.
+
 # 🎮 Usage
+
+1. Press `Ctrl+F` and you will see matching subtitles.
+2. Click or press `Enter` to download the selected subtitle.
 
 https://github.com/user-attachments/assets/ffb7a48a-d19d-4536-9d5c-76f5acdcbea5
 
 
-1. Press `Ctrl+F` and you will see matching subtitles.
-2. Click or press `Enter` to download the selected subtitle.
+| shortcut              | description         |
+|-----------------------|---------------------|
+| <kbd>Up</kbd>         | Previous Row        |
+| <kbd>Down</kbd>       | Next Row            |
+| <kbd>Click</kbd>      | Download            |
+| <kbd>Enter</kbd>      | Download            |
+| <kbd>Ctrl+Click</kbd> | Go to subtitle page |
+| <kbd>Ctrl+Enter</kbd> | Go to subtitle page |
+| <kbd>Esc</kbd>        | Exit                |
+
 
 # 🎉Supported Sites
 - **subsource** (all languages)
@@ -77,6 +100,11 @@ smart_sorting=yes
 
 # User Agent for cURL
 useragent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36
+
+# File Types
+video_types=mkv,mp4,avi
+subtitle_types=srt,ass
+archive_types=zip,rar,7z
 
 # GUI
 text_size=24
@@ -112,9 +140,6 @@ api_altyazidb=
 - **s**: Season filter
 - **e**: Episode filter
 
-> [!WARNING]
-> The year is treated as a tag even if it’s not in tag form (e.g., "avatar 2026") and is used when searching on added sites and **TMDB**. For more accurate results, try searching with the year.
-
 # 🥏Saving
 Saves subtitles in the same folder as the video using its filename for **Plex** and **Jellyfin** compatibility.
 
@@ -126,8 +151,13 @@ Media/
     └── Movie (2024).en.srt
 ```
 
+# 🔥Important Notes
+- To ensure accurate subtitle matching, the video directory should only contain episodes from the same series. Please remove any unrelated movies or shows.
+- The year is treated as a tag even if it’s not in tag form (e.g., "avatar 2026") and is used when searching on added sites and **TMDB**. For more accurate results, try searching with the year.
+
 # 🎯 Future Plans
 - More languages
 - **SubSource** episode filter
 - Icons for some tags
 - Inspect mode (=subtitle preview)
+- Search result cache

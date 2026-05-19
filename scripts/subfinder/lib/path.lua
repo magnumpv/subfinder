@@ -1,4 +1,5 @@
---v1.0
+--v1.1
+local h         = require "lib/helper"
 local this      = {}
 local seperator = package.config:sub(1,1)
 local variables = {
@@ -9,18 +10,6 @@ local variables = {
     options = mp.command_native({"expand-path", "~~/script-opts"})
 }
 local platform
-
-local function runCommand(args)
-
-    return mp.command_native({
-
-        name           = 'subprocess',
-        playback_only  = false,
-        capture_stdout = true,
-        capture_stderr = true,
-        args           = args
-    })
-end
 
 function this.platform()
 
@@ -64,10 +53,10 @@ function this.removeDir(path)
 
     if this.platform() == "windows" then
 
-        runCommand({"powershell", "-NoProfile", "-Command", string.format("Remove-Item -Recurse -Force -LiteralPath \"%s\"", path)})
+        h.runCommand({"powershell", "-NoProfile", "-Command", string.format("Remove-Item -Recurse -Force -LiteralPath \"%s\"", path)})
     else
 
-        runCommand({"rm", "-rf", path})
+        h.runCommand({"rm", "-rf", path})
     end
 end
 
@@ -77,35 +66,35 @@ function this.createDir(path)
 
         if this.platform() == "windows" then
 
-            runCommand({"powershell", "-NoProfile", "-Command", string.format("New-Item -Path \"%s\" -ItemType Directory -Force", path)})
+            h.runCommand({"powershell", "-NoProfile", "-Command", string.format("New-Item -Path \"%s\" -ItemType Directory -Force", path)})
         else
 
-            runCommand({"mkdir", "-p", path})
+            h.runCommand({"mkdir", "-p", path})
         end
     end
 end
 
 function this.readFile(path)
 
-    local h = io.open(path, "r")
+    local handle = io.open(path, "r")
 
-    if not h then return nil end
+    if not handle then return nil end
 
     local content = h:read("*all")
 
-    h:close()
+    handle:close()
 
     return content
 end
 
 function this.createFile(path, content)
 
-    local h = io.open(path, "w")
+    local handle = io.open(path, "w")
 
-    if not h then return false end
+    if not handle then return false end
 
-    h:write(content)
-    h:close()
+    handle:write(content)
+    handle:close()
 
     return true
 end

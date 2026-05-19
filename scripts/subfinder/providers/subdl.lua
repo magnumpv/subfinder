@@ -1,3 +1,4 @@
+local msg      = require "mp.msg"
 local h        = require "lib/helper"
 local utils    = require "mp.utils"
 local base     = require "lib/base"
@@ -6,7 +7,7 @@ local request  = require "lib/request"
 local site     = base:new({
 
     name = "subdl",
-    url  = {"https://api.subdl.com/api/v1", "https://dl.subdl.com"},
+    url  = {api = {"https://api.subdl.com/api/v1", "https://dl.subdl.com"}, site = "https://subdl.com"},
 })
 
 function site:getPage(queryParams)
@@ -17,14 +18,14 @@ function site:getPage(queryParams)
 
     if queryParams.imdbId then
 
-        content = request:timeout(15):sendRequest(self.url[1].."/subtitles", {api_key = config.api_subdl, imdb_id = queryParams.imdbId, languages = queryParams.tags.language, releases = "1", season_number = queryParams.tags.s, episode_number = queryParams.tags.e})
+        content = request:timeout(15):sendRequest(self.url.api[1].."/subtitles", {api_key = config.api_subdl, imdb_id = queryParams.imdbId, languages = queryParams.tags.language, releases = "1", season_number = queryParams.tags.s, episode_number = queryParams.tags.e})
     end
 
     --title search (with year)
 
     if not (content and content.subtitles and content.subtitles[1]) then
 
-        content = request:timeout(15):sendRequest(self.url[1].."/subtitles", {api_key = config.api_subdl, film_name = queryParams.title, year = queryParams.year, languages = queryParams.tags.language, releases = "1", season_number = queryParams.tags.s, episode_number = queryParams.tags.e})
+        content = request:timeout(15):sendRequest(self.url.api[1].."/subtitles", {api_key = config.api_subdl, film_name = queryParams.title, year = queryParams.year, languages = queryParams.tags.language, releases = "1", season_number = queryParams.tags.s, episode_number = queryParams.tags.e})
     end
 
     if not (content and content.subtitles and content.subtitles[1]) then
@@ -49,13 +50,14 @@ function site:parse(content, queryParams)
 
         table.insert(rows, subtitle:new({
 
-            title    = row.release_name,
-            link     = row.url,
-            uploader = row.author,
-            bulk     = row.full_season,
-            hi       = row.hi,
-            releases = row.releases,
-            provider  = self
+            title        = row.release_name,
+            pageLink     = row.subtitlePage and self.url.site..row.subtitlePage or nil,
+            downloadLink = row.url and self.url.api[2]..row.url or nil,
+            uploader     = row.author,
+            bulk         = row.full_season,
+            hi           = row.hi,
+            releases     = row.releases,
+            provider     = self
         }))
     end
 
@@ -69,12 +71,12 @@ function site:download(subtitle, savePath)
         msg.error("This subtitle belongs to a different provider!") return
     end
 
-    if not subtitle.link then
+    if not subtitle.downloadLink then
 
         msg.error("Subtitle link not found!") return
     end
 
-    request:timeout(30):download(savePath):sendRequest(self.url[2]..subtitle.link)
+    request:timeout(30):download(savePath):sendRequest(subtitle.downloadLink)
 end
 
 return site

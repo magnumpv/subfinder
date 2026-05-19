@@ -8,7 +8,7 @@ local path     = require "lib/path"
 local site     = base:new({
 
     name = "subsource",
-    url  = "https://api.subsource.net/api/v1"
+    url  = {api = "https://api.subsource.net/api/v1", site = "https://subsource.net"}
 })
 
 function site:getPage(queryParams)
@@ -34,14 +34,14 @@ function site:getPage(queryParams)
 
     if queryParams.imdbId then
 
-        content = request:timeout(15):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.."/movies/search", {searchType = "imdb", imdb = queryParams.imdbId, season = queryParams.tags.s})
+        content = request:timeout(15):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.api.."/movies/search", {searchType = "imdb", imdb = queryParams.imdbId, season = queryParams.tags.s})
     end
 
     --title search (with year)
 
     if not (content and content.data and content.data[1] and content.data[1].movieId) then
 
-        content = request:timeout(15):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.."/movies/search", {searchType = "text", q = queryParams.title, year = queryParams.year, season = queryParams.tags.s})
+        content = request:timeout(15):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.api.."/movies/search", {searchType = "text", q = queryParams.title, year = queryParams.year, season = queryParams.tags.s})
     end
 
     if not (content and content.data and content.data[1] and content.data[1].movieId) then
@@ -49,7 +49,7 @@ function site:getPage(queryParams)
         return nil
     end
 
-    content = request:timeout(15):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.."/subtitles", {movieId = content.data[1].movieId, language = languageMap[queryParams.tags.language]})
+    content = request:timeout(15):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.api.."/subtitles", {movieId = content.data[1].movieId, language = languageMap[queryParams.tags.language]})
 
     if not (content.data and content.data[1]) then return nil end
 
@@ -71,18 +71,19 @@ function site:parse(content, queryParams)
 
         table.insert(rows, subtitle:new({
 
-            id        = row.subtitleId,
-            title     = (row.releaseInfo and row.releaseInfo[1]) and row.releaseInfo[1] or nil,
-            link      = row.link,
-            uploader  = (row.contributors and row.contributors[1] and row.contributors[1].displayname) and row.contributors[1].displayname or nil,
-            bulk      = (row.files and row.files > 1),
-            downloads = row.downloads,
-            hi        = row.hearingImpaired,
-            foreign   = row.foreignParts,
-            quality   = qualityMap[row.releaseType],
-            releases  = row.releaseInfo,
-            date      = (row.createdAt) and dateConverter(row.createdAt) or nil,
-            provider  = self
+            id           = row.subtitleId,
+            title        = (row.releaseInfo and row.releaseInfo[1]) and row.releaseInfo[1] or nil,
+            pageLink     = row.link and self.url.site..row.link or nil,
+            downloadLink = row.subtitleId and string.format("%s/subtitles/%s/download", self.url.api, row.subtitleId) or nil,
+            uploader     = (row.contributors and row.contributors[1] and row.contributors[1].displayname) and row.contributors[1].displayname or nil,
+            bulk         = (row.files and row.files > 1),
+            downloads    = row.downloads,
+            hi           = row.hearingImpaired,
+            foreign      = row.foreignParts,
+            quality      = qualityMap[row.releaseType],
+            releases     = row.releaseInfo,
+            date         = (row.createdAt) and dateConverter(row.createdAt) or nil,
+            provider     = self
         }))
     end
 
@@ -96,12 +97,12 @@ function site:download(subtitle, savePath)
         msg.error("This subtitle belongs to a different provider!") return
     end
 
-    if not subtitle.id then
+    if not subtitle.downloadLink then
 
-        msg.error("Subtitle ID not found!") return
+        msg.error("Subtitle link not found!") return
     end
 
-    request:timeout(30):headers({["X-API-Key"] = config.api_subsource}):download(savePath):sendRequest(string.format("%s/subtitles/%s/download", self.url, subtitle.id))
+    request:timeout(30):headers({["X-API-Key"] = config.api_subsource}):download(savePath):sendRequest(subtitle.downloadLink)
 end
 
 return site

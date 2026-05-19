@@ -1,5 +1,6 @@
 local utf8  = require "lib/fastutf8"
 local utils = require "mp.utils"
+local msg   = require "mp.msg"
 local this  = {}
 
 function this.findBestSubtitle(videoFile, subtitleFiles)
@@ -102,7 +103,7 @@ end
 
 function this.runCommand(args)
 
-    return mp.command_native({
+    local res = mp.command_native({
 
         name           = 'subprocess',
         playback_only  = false,
@@ -110,6 +111,21 @@ function this.runCommand(args)
         capture_stderr = true,
         args           = args
     })
+
+    if res.status ~= 0 then
+
+        local tab     = string.rep(" ", 4)
+        local command = ""
+
+        for _, v in pairs(args) do command = command..v.." " end
+
+        msg.error("Command failed: "..command)
+        msg.error("[RESULT]")
+
+        for k, v in pairs(res) do msg.error(tab..tostring(k).."="..tostring(v)) end
+    end
+
+    return res
 end
 
 function this.splitString(str, splitter)
@@ -184,7 +200,7 @@ function this.log2(t, indent)
             this.log2(v, indent + 1)
         else
 
-            print(tab..tostring(k).." = "..tostring(v))
+            print(tab..tostring(k).."="..tostring(v))
         end
     end
 end
@@ -246,17 +262,22 @@ function this.listFiles(path, ext)
     return files
 end
 
-function this.unpackArchive(source, target)
+function this.visitTo(link)
 
     local isWindows = package.config:sub(1,1) == "\\"
 
     if isWindows then
 
-        this.runCommand({"powershell", "-NoProfile", "-Command", string.format('Expand-Archive -LiteralPath "%s" -DestinationPath "%s" -Force', source, target)})
+        return this.runCommand({"cmd", "/c", "start", link})
     else
 
-        this.runCommand({"unzip", "-o", source, "-d", target})
+        return this.runCommand({"xdg-open", link})
     end
+end
+
+function this.unpackArchive(source, target)
+
+    this.runCommand({"7z", "x", source, "-o"..target, "-y"})
 end
 
 function this.copyFile(source, target)
@@ -277,12 +298,25 @@ function this.getExt(filename)
     return filename:match("%.([^%.]-)$")
 end
 
+function this.removeExt(filename)
+
+    return filename:gsub("%.[^%.]-$", "")
+end
+
 function this.renameFile(file,newname)
 
     local dir, oldname = utils.split_path(file)
     local ext          = this.getExt(oldname)
 
     os.rename(dir..oldname, dir..newname.."."..ext)
+end
+
+function this.commandCheck(cmd)
+
+    local isWindows = package.config:sub(1,1) == "\\"
+    local res       = isWindows and this.runCommand({"where", cmd}) or this.runCommand({"which", cmd})
+
+    return res.status == 0
 end
 
 return this

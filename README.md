@@ -1,6 +1,6 @@
 # mpv-subfinder
 
-An MPV plugin that finds and lets you download subtitles for the current video from multiple sources.
+An MPV plugin for downloading subtitles from multiple sources.
 
 ![Example for Subfinder](https://github.com/magnum357i/mpv-subfinder/blob/main/subfinder.jpg)
 
@@ -12,7 +12,8 @@ An MPV plugin that finds and lets you download subtitles for the current video f
 
 # 🧲Dependencies
 
-- `cURL`
+- **cURL**
+- **API KEYS**
 
 # 🧰Installation
 
@@ -27,6 +28,10 @@ An MPV plugin that finds and lets you download subtitles for the current video f
 3. Add the providers you want to use to `sites_to_search`.
 
 # 🎮 Usage
+
+https://github.com/user-attachments/assets/ffb7a48a-d19d-4536-9d5c-76f5acdcbea5
+
+
 1. Press `Ctrl+F` and you will see matching subtitles.
 2. Click or press `Enter` to download the selected subtitle.
 
@@ -36,7 +41,10 @@ An MPV plugin that finds and lets you download subtitles for the current video f
 - **altyazidb** (turkish, english)
 - **turkcealtyazi** (turkish, english)
 
-I don’t plan to add all subtitle sites, and I’m not sure what else to add. I may add popular sites, or you can add them yourself.
+I don’t plan to add all subtitle sites, and I’m not sure what else to add. I can add popular sites, or you can add the sites you want.
+
+> [!NOTE]
+> I was planning to add OpenSubtitles, but its daily limit, even when logged in, is absurdly low.
 
 # ⚙️Configuration
 
@@ -77,18 +85,18 @@ api_altyazidb=
 # 🔎Searching
 
 1. Get **IMDb ID** from **TMDB**
-2. Use title search if the IMDb ID is unavailable or no matching page is found.
+2. Use title search if **IMDb ID** is not available or invalid.
 
 ### Tags
 - **language**: Language filter (Currently available values: `fr`, `it`, `es`, `zh`, `de`, `ru`, `ja`, `tr`, `en`)
 - **s**: Season filter
 - **e**: Episode filter
 
-> [!NOTE]
-> The year is treated as a tag even if it’s not in tag form (e.g., "avatar 2026"), and is used in the search fields of the added sites and TMDB. For more accurate results, try searching with the year.
+> [!WARNING]
+> The year is treated as a tag even if it’s not in tag form (e.g., "avatar 2026") and is used when searching on added sites and **TMDB**. For more accurate results, try searching with the year.
 
 # 🥏Saving
-Saves subtitles in the video folder using the video filename for compatibility with Plex and Jellyfin.
+Saves subtitles in the same folder as the video using its filename for **Plex** and **Jellyfin** compatibility.
 
 ### Example
 ```text

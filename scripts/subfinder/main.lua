@@ -2,8 +2,10 @@
 
 ╔════════════════════════════════╗
 ║          MPV subfinder         ║
-║              v1.0.3            ║
+║              v1.0.4            ║
 ╚════════════════════════════════╝
+
+https://github.com/magnum357i/mpv-subfinder
 
 ]]
 
@@ -19,15 +21,20 @@ local request  = require "lib/base"
 local msg      = require "mp.msg"
 config         = {
 
-    --settings
+    sites_to_search    = "", --subsource,subdl,altyazidb,turkcealtyazi
     preferred_language = "en",
     smart_sorting      = false,
     useragent          = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
-    video_types        = "mkv,mp4,avi",
-    subtitle_types     = "srt,ass",
+    video_types        = "mkv,mp4,avi,ts,m2ts,ogm",
+    subtitle_types     = "srt,ass,ssa,vtt,sub,sup,pgs",
     archive_types      = "zip,rar,7z",
 
-    --gui
+    --API KEYS
+    api_subsource      = "",
+    api_subdl          = "",
+    api_altyazidb      = "",
+
+    --GUI
     text_size          = 24,
     sub_text_size      = 16,
     box_alpha          = 70, -- 0-255
@@ -41,14 +48,7 @@ config         = {
     bar_width          = 4,
     column_width       = 15,
     tag_padding        = 4,
-    tag_right_margin   = 8,
-
-
-    --api keys
-    sites_to_search    = "", --subsource,subdl,altyazidb,turkcealtyazi
-    api_subsource      = "",
-    api_subdl          = "",
-    api_altyazidb      = ""
+    tag_right_margin   = 8
 }
 
 options.read_options(config, "subfinder")
@@ -63,7 +63,7 @@ local message         = ""
 local titleProperties = {}
 local panel           = gui:new()
 local providers       = {}
-local currentLanguage = ""
+local currentLanguage = "xx"
 local search          = {timer = nil, text = "", results = {}, processing = false}
 local cachedPaths     = {}
 local firstOpened     = true
@@ -165,6 +165,7 @@ for _, p in pairs(h.splitString(config.sites_to_search)) do
     else
 
         mp.osd_message("[subfinder] Unknown provider name: "..p, 10)
+        msg.error(l)
     end
 end
 
@@ -245,7 +246,7 @@ end
 
 local function cleanTitle()
 
-    local title = h.removeExt(titleProperties.name)
+    local title = h.removeExt(titleProperties.original)
 
     title = title:gsub("%d%d%d%d[%s_]+x[%s_]+%d%d%d", "")
 
@@ -421,7 +422,7 @@ local function render()
                 end
             else
 
-                panel:properties({x = posX, y = posY, color = colors.subtext, align = 6, bold = true}):text(search.results[k].provider.name)
+                panel:properties({x = posX, y = posY, color = colors.subtext, align = 6, bold = true}):text(search.results[k].provider)
             end
 
             lineY = lineY + data.lineHeight
@@ -467,7 +468,6 @@ local function reset()
     mouse.x, mouse.y = 0, 0
     offset           = 1
     currentIndex     = 1
-    currentLanguage  = ""
 end
 
 local function showMessage(str)
@@ -481,6 +481,8 @@ local function getPath(key)
 
     if cachedPaths[key] then return cachedPaths[key] end
 
+    local cacheFolder = "mpvsubfinder"
+
     if key == "video" then
 
         local fullPath      = mp.get_property("path")
@@ -489,9 +491,24 @@ local function getPath(key)
         cachedPaths[key]    = dir
 
         return cachedPaths[key]
+    elseif key == "cache/resultsfile" then
+
+        cachedPaths[key] = path.join({"%temp", cacheFolder, "results.json"})
+
+        return cachedPaths[key]
+    elseif key == "cache/searchedfile" then
+
+        cachedPaths[key] = path.join({"%temp", cacheFolder, "searched.txt"})
+
+        return cachedPaths[key]
+    elseif key == "cache/subtitles" then
+
+        cachedPaths[key] = path.join({"%temp", cacheFolder, "subtitles"})
+
+        return cachedPaths[key]
     elseif key == "cache" then
 
-        cachedPaths[key] = path.join({"%temp", "mpvsubfinder"})
+        cachedPaths[key] = path.join({"%temp", cacheFolder})
 
         return cachedPaths[key]
     end
@@ -499,38 +516,24 @@ local function getPath(key)
     return nil
 end
 
-local function openInBrowser()
+local function startDownload(link, provider)
 
-    if not search.results[currentIndex]          then msg.warn("Row not found!")  return end
-    if not search.results[currentIndex].pageLink then msg.warn("Link not found!") return end
+    mp.osd_message("Please wait...", 30)
 
-    h.visitTo(search.results[currentIndex].pageLink)
-end
+    path.removeDir(getPath("cache/subtitles"))
+    path.createDir(getPath("cache/subtitles"))
 
-local function downloadFile()
+    provider:download(link, getPath("cache/subtitles"))
 
-    if not search.results[currentIndex] then return end
+    local archiveFiles = h.listFiles(getPath("cache/subtitles"), config.archive_types)
 
-    path.removeDir(getPath("cache"))
-    path.createDir(getPath("cache"))
+    if not (archiveFiles and archiveFiles[1]) then mp.osd_message("Zip file not found.", 3) return end
 
-    search.results[currentIndex].provider:download(search.results[currentIndex], getPath("cache"))
+    h.unpackArchive(path.join({getPath("cache/subtitles"), archiveFiles[1]}), getPath("cache/subtitles"))
 
-    local archiveFiles = h.listFiles(getPath("cache"), config.archive_types)
+    local subFiles = h.listFiles(getPath("cache/subtitles"), "ass,srt")
 
-    if not (archiveFiles and archiveFiles[1]) then
-
-        mp.osd_message("Zip file not found.", 3) return
-    end
-
-    h.unpackArchive(path.join({getPath("cache"), archiveFiles[1]}), getPath("cache"))
-
-    local subFiles = h.listFiles(getPath("cache"), "ass,srt")
-
-    if not (subFiles and subFiles[1]) then
-
-        mp.osd_message("Subtitle file not found.", 3) return
-    end
+    if not (subFiles and subFiles[1]) then mp.osd_message("Subtitle file not found.", 3) return end
 
     local attachSubtitle = function(subtitleFile, videoFile)
 
@@ -538,11 +541,11 @@ local function downloadFile()
 
         if path.checkPath(attachedSubtitleFile) then path.removeFile(attachedSubtitleFile) end
 
-        h.copyFile(path.join({getPath("cache"), subtitleFile}), attachedSubtitleFile)
+        h.copyFile(path.join({getPath("cache/subtitles"), subtitleFile}), attachedSubtitleFile)
     end
 
     local videos        = h.listFiles(getPath("video"), config.video_types)
-    local subtitles     = h.listFiles(getPath("cache"), config.subtitle_types)
+    local subtitles     = h.listFiles(getPath("cache/subtitles"), config.subtitle_types)
     local videoCount    = videos    and #videos    or 0
     local subtitleCount = subtitles and #subtitles or 0
 
@@ -551,9 +554,9 @@ local function downloadFile()
     local subtitleOfThisVideo   = ""
     local attachedSubtitleCount = 0
 
-    if not (query.tags and query.tags.s or query.tags.e) then
+    if not (query.tags and (query.tags.s or query.tags.e)) then
 
-        attachSubtitle(subtitles[1], titleProperties.name)
+        attachSubtitle(subtitles[1], titleProperties.original)
 
         subtitleOfThisVideo   = subtitles[1]
         attachedSubtitleCount = attachedSubtitleCount + 1
@@ -608,7 +611,7 @@ local function downloadFile()
 
                     if bestSubtitle then
 
-                        if v == titleProperties.name then subtitleOfThisVideo = bestSubtitle end
+                        if v == titleProperties.original then subtitleOfThisVideo = bestSubtitle end
 
                         attachSubtitle(bestSubtitle, v)
 
@@ -621,7 +624,7 @@ local function downloadFile()
 
     if subtitleOfThisVideo ~= "" then
 
-        subtitleOfThisVideo = path.join({getPath("video"), table.concat({h.removeExt(titleProperties.name), currentLanguage, h.getExt(subtitleOfThisVideo)}, ".")})
+        subtitleOfThisVideo = path.join({getPath("video"), table.concat({h.removeExt(titleProperties.original), currentLanguage, h.getExt(subtitleOfThisVideo)}, ".")})
 
         if path.checkPath(subtitleOfThisVideo) then mp.commandv("sub-add", subtitleOfThisVideo, "select") end
     end
@@ -632,6 +635,76 @@ local function downloadFile()
     else
 
         mp.osd_message("Download failed!", 3)
+    end
+end
+
+local function getProviderFromLink(link)
+
+    link = link or ""
+
+    return string.match(link, "//([^%.]*)")
+end
+
+local function openInBrowser()
+
+    if not (search.results[currentIndex] and search.results[currentIndex].pageLink) then msg.warn("Link not found!") return end
+
+    local provider = providers[search.results[currentIndex].provider]
+
+    h.visitTo(search.results[currentIndex].pageLink and provider.url.site..search.results[currentIndex].pageLink or nil)
+end
+
+local function downloadFile()
+
+    if not (search.results[currentIndex] and search.results[currentIndex].downloadLink) then mp.osd_message("Link not found!", 5) return end
+
+    local provider = providers[search.results[currentIndex].provider]
+
+    startDownload(search.results[currentIndex].downloadLink, provider)
+end
+
+local function pasteLink()
+
+    currentLanguage          = "xx"
+    local filename           = mp.get_property("filename")
+    titleProperties          = subtitle:properties(h.removeExt(filename))
+    titleProperties.original = filename
+    local clipboard          = mp.get_property("clipboard/text", "")
+    local provider           = getProviderFromLink(clipboard)
+
+    if not (provider and providers[provider]) then mp.osd_message(string.format("Provider (%s) not found!", clipboard:sub(1,50)), 5) return end
+
+    startDownload(clipboard, providers[provider])
+    reset()
+end
+
+local function writeResultsToCache()
+
+    local ok = path.createFile(getPath("cache/resultsfile"), utils.format_json(search.results))
+
+    if not ok then mp.osd_message("Results not saved!", 3) return end
+
+    path.createFile(getPath("cache/searchedfile"), search.text)
+end
+
+local function readResultsFromCache()
+
+    local content
+
+    content = path.readFile(getPath("cache/searchedfile"))
+
+    if content and search.text == content then
+
+        content = path.readFile(getPath("cache/resultsfile"))
+
+        if content then
+
+            local query     = getQueryParams()
+            currentLanguage = query.tags.language
+            search.results  = utils.parse_json(content)
+
+            fillData()
+        end
     end
 end
 
@@ -682,7 +755,17 @@ local function submit()
 
         showMessage(string.format("(%s) Getting subtitles from %s...", steps, p))
 
-        h.tableMerge3(results, providers[p]:findSubtitles(query))
+        local rows = providers[p]:findSubtitles(query)
+
+        if rows then
+
+            for k, v in pairs(rows) do
+
+                v.provider = p
+
+                table.insert(search.results, v)
+            end
+        end
 
         steps = steps - 1
     end
@@ -734,14 +817,18 @@ local function togglePlayerControllers()
 
     if not opened then
 
+        mp.commandv("script-message", "osc-visibility", "never", "no-osd")
         mp.commandv("script-message-to", "uosc", "disable-elements", mp.get_script_name(), "timeline,controls,volume,top_bar,speed")
     else
 
+        mp.commandv("script-message", "osc-visibility", "auto", "no-osd")
         mp.commandv("script-message-to", "uosc", "disable-elements", mp.get_script_name(), "")
     end
 end
 
 local function toggle()
+
+    togglePlayerControllers()
 
     if not opened then
 
@@ -781,45 +868,42 @@ local function toggle()
 
         input.init()
 
-        local filename       = mp.get_property("filename")
-        titleProperties      = subtitle:properties(h.removeExt(filename))
-        titleProperties.name = filename
+        local filename           = mp.get_property("filename")
+        titleProperties          = subtitle:properties(h.removeExt(filename))
+        titleProperties.original = filename
 
         if search.text == "" then
 
             local searched = cleanTitle()
 
-            if titleProperties.episode and not titleProperties.season then titleProperties.season = 1 end
-
-            if titleProperties.year            then searched = searched.." "..titleProperties.year               end
-            if titleProperties.season          then searched = searched.." s:"..titleProperties.season           end
-            if titleProperties.episode         then searched = searched.." e:"..titleProperties.episode          end
-            if config.preferred_language ~= "" then searched = searched.." language:"..config.preferred_language end
+            if titleProperties.episode and not titleProperties.season then titleProperties.season = 1                                   end
+            if titleProperties.year                                   then searched = searched.." "..titleProperties.year               end
+            if titleProperties.season                                 then searched = searched.." s:"..titleProperties.season           end
+            if titleProperties.episode                                then searched = searched.." e:"..titleProperties.episode          end
+            if config.preferred_language ~= ""                        then searched = searched.." language:"..config.preferred_language end
 
             search.text = searched
         end
+
+        readResultsFromCache()
 
         input.font_size    = config.text_size
         input.cursor_theme = config.cursor_color
 
         input.default(search.text)
 
-        submit()
+        if next(search.results) == nil then submit() end
         --fillData()
         render()
         setBindings()
-
     else
 
         unsetBindings()
         panel:remove()
 
         input.reset()
-        reset()
         collectgarbage()
     end
-
-    togglePlayerControllers()
 
     opened = not opened
 end
@@ -925,6 +1009,8 @@ local function bindingList()
             func = function ()
 
                 toggle()
+                writeResultsToCache()
+                reset()
             end,
             opts = nil
         },
@@ -936,8 +1022,10 @@ local function bindingList()
 
                 if data.resultCount > 0 then
 
-                    downloadFile()
                     toggle()
+                    writeResultsToCache()
+                    downloadFile()
+                    reset()
                 end
             end,
             opts = nil
@@ -948,11 +1036,14 @@ local function bindingList()
             key  = "mbtn_left",
             func = function ()
 
+                toggle()
+                writeResultsToCache()
+
                 local isMouseOverRow = setCurrentIndex()
 
                 if isMouseOverRow then downloadFile() end
 
-                toggle()
+                reset()
             end,
             opts = nil
         },
@@ -1027,4 +1118,5 @@ mp.register_event("file-loaded", function()
     search.text = ""
 end)
 
-mp.add_key_binding("Ctrl+f", "subfinder", toggle)
+mp.add_key_binding(nil, "subfinder",           toggle)
+mp.add_key_binding(nil, "subfinder_pastelink", pasteLink)

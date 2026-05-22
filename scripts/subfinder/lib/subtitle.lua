@@ -1,7 +1,5 @@
-local h = require "lib/helper"
-
-local subtitle    = {}
-subtitle.__index  = subtitle
+local h        = require "lib/helper"
+local subtitle = {}
 
 function subtitle:getEpisodeNumber(title)
 
@@ -100,34 +98,30 @@ function subtitle:formatK(number)
     return number >= 1000 and math.floor(number / 1000).."K" or number
 end
 
-function subtitle:new(info)
+function subtitle:newLine(t)
 
-    local obj     = info
-    obj.downloads = self:formatK(info.downloads)
+    local info = {}
+
+    for k, v in pairs(t) do info[k] = v end
+
+    info.downloads = self:formatK(t.downloads)
 
     if info.date then
 
         if info.date.d and info.date.m and info.date.y then
 
-            obj.date = config.date_format:gsub("<mm>", info.date.m):gsub("<dd>", info.date.d):gsub("<yyyy>", info.date.y)
+            info.date = config.date_format:gsub("<mm>", info.date.m):gsub("<dd>", info.date.d):gsub("<yyyy>", info.date.y)
         else
 
-            obj.date = info.date
+            info.date = info.date
         end
     end
 
     local p = self:properties(info.title)
 
-    obj.quality  = info.quality  or p.quality
-    obj.season   = info.season   or p.season
-    obj.episode  = info.episode  or p.episode
-    obj.version  = info.version  or p.version
-    obj.platform = info.platform or p.platform
-    obj.provider = info.provider
+    for k, v in pairs(p) do info[k] = info[k] or v end
 
-    setmetatable(obj, self)
-
-    return obj
+    return info
 end
 
 return subtitle

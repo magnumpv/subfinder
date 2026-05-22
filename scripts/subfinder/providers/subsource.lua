@@ -8,7 +8,11 @@ local path     = require "lib/path"
 local site     = base:new({
 
     name = "subsource",
-    url  = {api = "https://api.subsource.net/api/v1", site = "https://subsource.net"}
+    url  = {
+
+        api  = "https://api.subsource.net/api/v1",
+        site = "https://subsource.net"
+    }
 })
 
 function site:getPage(queryParams)
@@ -49,7 +53,7 @@ function site:getPage(queryParams)
         return nil
     end
 
-    content = request:timeout(15):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.api.."/subtitles", {movieId = content.data[1].movieId, language = languageMap[queryParams.tags.language]})
+    content = request:timeout(15):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.api.."/subtitles", {movieId = content.data[1].movieId, language = languageMap[queryParams.tags.language], limit = 30})
 
     if not (content.data and content.data[1]) then return nil end
 
@@ -69,12 +73,12 @@ function site:parse(content, queryParams)
 
     for _, row in ipairs(content) do
 
-        table.insert(rows, subtitle:new({
+        table.insert(rows, subtitle:newLine({
 
             id           = row.subtitleId,
             title        = (row.releaseInfo and row.releaseInfo[1]) and row.releaseInfo[1] or nil,
-            pageLink     = row.link and self.url.site..row.link or nil,
-            downloadLink = row.subtitleId and string.format("%s/subtitles/%s/download", self.url.api, row.subtitleId) or nil,
+            pageLink     = row.link,
+            downloadLink = row.subtitleId and string.format("/subtitles/%s/download", row.subtitleId) or nil,
             uploader     = (row.contributors and row.contributors[1] and row.contributors[1].displayname) and row.contributors[1].displayname or nil,
             bulk         = (row.files and row.files > 1),
             downloads    = row.downloads,
@@ -82,27 +86,30 @@ function site:parse(content, queryParams)
             foreign      = row.foreignParts,
             quality      = qualityMap[row.releaseType],
             releases     = row.releaseInfo,
-            date         = (row.createdAt) and dateConverter(row.createdAt) or nil,
-            provider     = self
+            date         = (row.createdAt) and dateConverter(row.createdAt) or nil
         }))
     end
 
     return rows
 end
 
-function site:download(subtitle, savePath)
+function site:download(link, savePath)
 
-    if self.name ~= subtitle.provider.name then
+    if not link then msg.error("Link not found!") return end
 
-        msg.error("This subtitle belongs to a different provider!") return
+    if string.find(link, "^/subtitles/%d+/download$") then --from api
+
+        link = self.url.api..link
+    elseif string.find(link, "^https://subsource%.net/subtitle/[^/]*/[^/]*/%d+$") then --from link
+
+        local id = string.match(link, "(%d+)$")
+        link     = self.url.api..string.format("/subtitles/%s/download", id)
+    else
+
+        msg.error("Invalid link!") return
     end
 
-    if not subtitle.downloadLink then
-
-        msg.error("Subtitle link not found!") return
-    end
-
-    request:timeout(30):headers({["X-API-Key"] = config.api_subsource}):download(savePath):sendRequest(subtitle.downloadLink)
+    request:timeout(30):headers({["X-API-Key"] = config.api_subsource}):download(savePath):sendRequest(link)
 end
 
 return site

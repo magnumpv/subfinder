@@ -80,7 +80,7 @@ function this.readFile(path)
 
     if not handle then return nil end
 
-    local content = h:read("*all")
+    local content = handle:read("*all")
 
     handle:close()
 

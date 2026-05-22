@@ -129,26 +129,20 @@ function site:parse(content, queryParams)
 
     local findValues = function(row)
 
-        local buildLink = function(link)
-
-            return link and self.url.site..link or nil
-        end
-
         if not row:match('class="'..languageMap[queryParams.tags.language]..'"') then return nil end
 
-        return subtitle:new({
+        return subtitle:newLine({
 
             title        = request:stripTags(row:match('<a itemprop="url"[^>]->(.-)</a>')).." - "..request:stripTags(row:match('<div class="ripdiv">(.-)</div>')),
-            pageLink     = buildLink(row:match('href="(/sub/[^"]*)"')),
-            downloadLink = buildLink(row:match('href="(/sub/[^"]*)"')),
+            pageLink     = row:match('href="(/sub/[^"]*)"'),
+            downloadLink = row:match('href="(/sub/[^"]*)"'),
             uploader     = request:stripTags(row:match('<div class="algonderen">(.-)</div>')),
             downloads    = row:match('<div class="alindirme">(.-)</div>'),
             date         = row:match('<div class="datediv">(.-)</div>'),
             quality      = qualityMap[row:match('<div class="ripdiv">%s*<span class="([^"]-)">')] or qualityMap[row:match('<div class="alcevirmen">%s*<span class="([^"]-)">')],
             hi           = row:match("/images/isitme.png") and true or false,
             season       = getSeason(request:stripTags(row:match('<div class="alcd">(.-)</div>'))),
-            episode      = getEpisode(request:stripTags(row:match('<div class="alcd">(.-)</div>'))),
-            provider     = self
+            episode      = getEpisode(request:stripTags(row:match('<div class="alcd">(.-)</div>')))
         })
     end
 
@@ -179,21 +173,24 @@ function site:parse(content, queryParams)
     return rows
 end
 
-function site:download(subtitle, savePath)
+function site:download(link, savePath)
 
-    if self.name ~= subtitle.provider.name then
+    if not link then msg.error("Link not found!") return end
 
-        msg.error("This subtitle belongs to a different provider!") return
+    if string.find(link, "^/sub/%d+/[^%.]*.html$") then --from api
+
+        link = self.url.site..link
+    elseif string.find(link, "^https://turkcealtyazi%.org/sub/%d+/[^%.]*.html$") then --from link
+
+        --nothing to do
+    else
+
+        msg.error("Invalid link!") return
     end
 
-    if not subtitle.downloadLink then
+    local subtitlePageContent = request:timeout(15):sendRequest(link)
 
-        msg.error("Subtitle link not found!") return
-    end
-
-    local subtitlePageContent = request:timeout(15):sendRequest(subtitle.downloadLink)
-
-    if not subtitlePageContent then return end
+    if not subtitlePageContent then msg.error("Page not found!") return end
 
     local form = {}
 
@@ -201,7 +198,7 @@ function site:download(subtitle, savePath)
     form.altid = subtitlePageContent:match('<input type="hidden" name="altid" value="(%d+)"[^>]*>')
     form.sidid = subtitlePageContent:match('<input type="hidden" name="sidid" value="([^"]-)"[^>]*>')
 
-    if not (form.idid and form.altid and form.sidid) then return end
+    if not (form.idid and form.altid and form.sidid) then msg.error("Missing form value!") return end
 
     request:timeout(30):postData(form):download(savePath):sendRequest(self.url.site.."/ind")
 end

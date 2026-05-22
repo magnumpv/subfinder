@@ -43,35 +43,34 @@ function site:parse(content, queryParams)
 
     for _, row in ipairs(content) do
 
-        table.insert(rows, subtitle:new({
+        table.insert(rows, subtitle:newLine({
 
             id           = row.id,
             title        = (row.releases and row.releases[1]) and row.releases[1] or row.translator,
-            downloadLink = row.id and self.url.api.."/download" or nil,
+            downloadLink = row.download_url and row.download_url:gsub(".+(/download)", "%1") or nil,
             uploader     = row.uploader,
             downloads    = row.downloads,
             hi           = row.hearing_impaired,
-            releases     = row.translator_note,
-            provider     = self
+            releases     = row.translator_note
         }))
     end
 
     return rows
 end
 
-function site:download(subtitle, savePath)
+function site:download(link, savePath)
 
-    if self.name ~= subtitle.provider.name then
+    if not link then msg.error("Link not found!") return end
 
-        msg.error("This subtitle belongs to a different provider!") return
+    if string.find(link, "^/download%?sub_id=%d+$") then --from api
+
+        link = self.url.api..link
+    else
+
+        msg.error("Invalid link!") return
     end
 
-    if not subtitle.downloadLink then
-
-        msg.error("Subtitle link not found!") return
-    end
-
-    request:timeout(30):headers({["X-API-Key"] = config.api_altyazidb}):download(savePath):sendRequest(subtitle.downloadLink, {sub_id = subtitle.id})
+    request:timeout(30):headers({["X-API-Key"] = config.api_altyazidb}):download(savePath):sendRequest(link)
 end
 
 return site

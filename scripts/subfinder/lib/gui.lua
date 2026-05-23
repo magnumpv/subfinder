@@ -167,11 +167,11 @@ end
 
 function gui:flag(lang)
 
-    if flags[lang] then
+    if flag.data then
 
         local result
 
-        for _, flagpart in pairs(flags[lang]) do
+        for _, flagpart in pairs(flag.data) do
 
             result = ""
             result = result.."\\an"..(self.p.align or "7")

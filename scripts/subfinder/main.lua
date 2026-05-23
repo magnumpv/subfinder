@@ -2,7 +2,7 @@
 
 ╔════════════════════════════════╗
 ║          MPV subfinder         ║
-║              v1.0.4            ║
+║              v1.0.5            ║
 ╚════════════════════════════════╝
 
 https://github.com/magnum357i/mpv-subfinder
@@ -71,16 +71,32 @@ local query           = {}
 
 colors = {
 
-    text     = "FFFFFF",
-    subtext  = "959595",
-    hover    = "000000",
-    delete   = "0000FF",
-    bd       = "1F85CC",
-    web      = "F8786C",
-    dvd      = "7F7F7F",
-    hi       = "5551F9",
-    batch    = "45AD18",
-    foreign  = "CABF35"
+    text         = "FFFFFF",
+    subtext      = "959595",
+    hover        = "000000",
+
+    --quality
+    bd           = "1F85CC",
+    web          = "F8786C",
+    dvd          = "7F7F7F",
+
+    --tag
+    hi           = "5551F9",
+    batch        = "45AD18",
+    foreign      = "CABF35",
+
+    --region
+    latinamerica = "DA50B2",
+    spain        = "DA50B2",
+    cantonese    = "DA50B2",
+    simplified   = "DA50B2",
+    traditional  = "DA50B2",
+    cantonese    = "DA50B2",
+    bgcode       = "DA50B2",
+    bilingual    = "DA50B2",
+    canada       = "DA50B2",
+    france       = "DA50B2",
+    brazilian    = "DA50B2"
 }
 
 icons = {
@@ -90,69 +106,45 @@ icons = {
     download = "m 19 19 l 1 19 b 0 19 0 18 0 18 l 0 13 l 2 13 l 2 17 l 18 17 l 18 13 l 20 13 l 20 18 b 20 18 19 19 19 19 m 15 7 b 15 6 14 6 14 7 l 11 10 l 11 2 b 11 1 10 1 10 1 b 9 1 9 1 9 2 l 9 10 l 5 7 b 5 6 4 6 4 7 b 3 7 3 8 4 8 l 9 13 b 9 14 10 14 10 13 l 15 8 b 16 8 16 7 15 7"
 }
 
-flags = {
+flag = {}
 
-    fr = {
+languages = {
 
-        {c = "910000", d = "m 0 0 l 213 0 l 213 480 l 0 480"},
-        {c = "FFFFFF", d = "m 213 0 l 426 0 l 426 480 l 213 480"},
-        {c = "0F00E1", d = "m 426 0 l 640 0 l 640 480 l 426 480"}
-    },
-    it = {
-
-        {c = "372BCE", d = "m 36 27 b 36 29 34 31 32 31 l 24 31 l 24 5 l 32 5 b 34 5 36 6 36 9 l 36 27"},
-        {c = "469200", d = "m 4 5 b 1 5 0 6 0 9 l 0 27 b 0 29 1 31 4 31 l 12 31 l 12 5 l 4 5"},
-        {c = "EEEEEE", d = "m 12 5 l 24 5 l 24 31 l 12 31"}
-    },
-    es = {
-
-        {c = "1D0AC6", d = "m 36 27 b 36 29 34 31 32 31 l 4 31 b 1 31 0 29 0 27 l 0 9 b 0 6 1 5 4 5 l 32 5 b 34 5 36 6 36 9 l 36 27"},
-        {c = "00C4FF", d = "m 0 12 l 36 12 l 36 24 l 0 24"},
-        {c = "6E59EA", d = "m 9 17 l 9 20 b 9 21 10 23 12 23 b 13 23 15 21 15 20 l 15 17 l 9 17"},
-        {c = "B2A2F4", d = "m 12 16 l 15 16 l 15 19 l 12 19"},
-        {c = "442EDD", d = "m 9 16 l 12 16 l 12 19 l 9 19"},
-        {c = "6E59EA", d = "m 12 13 b 13 13 15 13 15 14 b 15 15 13 16 12 16 b 10 16 9 15 9 14 b 9 13 10 13 12 13"},
-        {c = "33ACFF", d = "m 12 13 b 13 13 15 13 15 13 b 15 14 13 14 12 14 b 10 14 9 14 9 13 b 9 13 10 13 12 13"},
-        {c = "B5AA99", d = "m 7 16 l 8 16 l 8 23 l 7 23 m 16 16 l 17 16 l 17 23 l 16 23"},
-        {c = "7F7566", d = "m 6 22 l 9 22 l 9 23 l 6 23 m 15 22 l 18 22 l 18 23 l 15 23 m 7 15 l 8 15 l 8 16 l 7 16 m 16 15 l 17 15 l 17 16 l 16 16"}
-    },
-    zh = {
-
-        {c = "1029DE", d = "m 36 27 b 36 29 34 31 32 31 l 4 31 b 1 31 0 29 0 27 l 0 9 b 0 6 1 5 4 5 l 32 5 b 34 5 36 6 36 9 l 36 27"},
-        {c = "02DEFF", d = "m 11 9 l 11 9 l 12 8 l 12 9 l 13 10 l 12 10 l 12 10 l 11 10 l 10 10 l 11 9 m 15 11 l 15 12 l 16 13 l 15 13 l 14 13 l 14 13 l 13 12 l 14 12 l 14 11 l 15 12 m 14 15 l 15 16 l 15 16 l 15 17 l 15 17 l 14 17 l 14 17 l 14 17 l 13 16 l 14 16 m 11 19 l 11 19 l 12 18 l 12 19 l 13 20 l 12 20 l 12 20 l 11 20 l 10 20 l 11 19 m 7 11 l 7 13 l 10 13 l 8 15 l 9 18 l 7 16 l 4 18 l 5 15 l 3 13 l 6 13"}
-    },
-    de = {
-
-        {c = "05CDFF", d = "m 0 27 b 0 29 1 31 4 31 l 32 31 b 34 31 36 29 36 27 l 36 23 l 0 23 l 0 27"},
-        {c = "241FED", d = "m 0 14 l 36 14 l 36 23 l 0 23"},
-        {c = "141414", d = "m 32 5 l 4 5 b 1 5 0 6 0 9 l 0 14 l 36 14 l 36 9 b 36 6 34 5 32 5"}
-    },
-    ru = {
-
-        {c = "2820CE", d = "m 36 27 b 36 29 34 31 32 31 l 4 31 b 1 31 0 29 0 27 l 0 23 l 36 23 l 36 27"},
-        {c = "8C4022", d = "m 0 13 l 36 13 l 36 23 l 0 23"},
-        {c = "EEEEEE", d = "m 32 5 l 4 5 b 1 5 0 6 0 9 l 0 13 l 36 13 l 36 9 b 36 6 34 5 32 5"}
-    },
-    ja = {
-
-        {c = "EEEEEE", d = "m 36 27 b 36 29 34 31 32 31 l 4 31 b 1 31 0 29 0 27 l 0 9 b 0 6 1 5 4 5 l 32 5 b 34 5 36 6 36 9 l 36 27"},
-        {c = "2F1BED", d = "m 18 11 b 21 11 25 14 25 18 b 25 21 21 25 18 25 b 14 25 11 21 11 18 b 11 14 14 11 18 11"}
-    },
-    tr = {
-
-        {c = "170AE3", d = "m 0 0 l 640 0 l 640 480 l 0 480"},
-        {c = "FFFFFF", d = "m 407 247 b 407 313 352 367 285 367 b 217 367 163 313 163 247 b 163 181 217 127 285 127 b 352 127 407 181 407 247"},
-        {c = "170AE3", d = "m 413 247 b 413 300 369 343 315 343 b 261 343 217 300 217 247 b 217 194 261 151 315 151 b 369 151 413 194 413 247"},
-        {c = "FFFFFF", d = "m 430 191 l 429 235 l 388 247 l 429 261 l 428 302 l 454 270 l 494 284 l 471 250 l 500 216 l 456 228 l 430 191"}
-    },
-    en = {
-
-        {c = "692101", d = "m 0 0 l 640 0 l 640 480 l 0 480"},
-        {c = "FFFFFF", d = "m 75 0 l 319 181 l 562 0 l 640 0 l 640 62 l 400 241 l 640 419 l 640 480 l 560 480 l 320 301 l 81 480 l 0 480 l 0 420 l 239 242 l 0 64 l 0 0"},
-        {c = "2E10C8", d = "m 424 281 l 640 440 l 640 480 l 369 281 m 240 301 l 246 336 l 54 480 l 0 480 m 640 0 l 640 3 l 391 191 l 393 147 l 590 0 m 0 0 l 239 176 l 179 176 l 0 42"},
-        {c = "FFFFFF", d = "m 241 0 l 241 480 l 401 480 l 401 0 m 0 160 l 0 320 l 640 320 l 640 160"},
-        {c = "2E10C8", d = "m 0 193 l 0 289 l 640 289 l 640 193 m 273 0 l 273 480 l 369 480 l 369 0"}
-    }
+    ar = "Arabic",
+    az = "Azerbaijani",
+    bg = "Bulgarian",
+    cs = "Czech",
+    da = "Danish",
+    de = "German",
+    el = "Greek",
+    en = "English",
+    es = "Spanish",
+    fa = "Farsi Persian",
+    fi = "Finnish",
+    fr = "French",
+    he = "Hebrew",
+    hi = "Hindi",
+    hr = "Croatian",
+    id = "Indonesian",
+    it = "Italian",
+    ja = "Japanese",
+    ko = "Korean",
+    nl = "Dutch",
+    no = "Norwegian",
+    pl = "Polish",
+    pt = "Portuguese",
+    ro = "Romanian",
+    ru = "Russian",
+    sq = "Albanian",
+    sr = "Serbian",
+    sv = "Swedish",
+    th = "Thai",
+    tr = "Turkish",
+    uk = "Ukrainian",
+    ur = "Urdu",
+    uz = "Uzbek",
+    vi = "Vietnamese",
+    zh = "Chinese"
 }
 
 for _, p in pairs(h.splitString(config.sites_to_search)) do
@@ -169,7 +161,7 @@ for _, p in pairs(h.splitString(config.sites_to_search)) do
     end
 end
 
-local function resizeShapes()
+local function resizeIcons()
 
     for _, name in pairs({"uploader", "date", "download"}) do
 
@@ -177,12 +169,80 @@ local function resizeShapes()
         local scale                 = (config.sub_text_size) / iconHeight
         icons[name]                 = h.scaleShape(icons[name], scale)
     end
+end
 
-    for _, flag in pairs(flags) do
+resizeIcons()
+
+local function getPath(key)
+
+    if cachedPaths[key] then return cachedPaths[key] end
+
+    local cacheFolder = "mpvsubfinder"
+
+    if key == "video" then
+
+        local fullPath      = mp.get_property("path")
+        local dir, filename = utils.split_path(fullPath)
+        dir                 = dir:gsub("[\\//]$", "")
+        cachedPaths[key]    = dir
+
+        return cachedPaths[key]
+    elseif key == "flag" then
+
+        cachedPaths[key] = path.join({"%scripts", "subfinder", "flags", "<lang>.json"})
+
+        return cachedPaths[key]
+    elseif key == "cache/resultsfile" then
+
+        cachedPaths[key] = path.join({"%temp", cacheFolder, "results.json"})
+
+        return cachedPaths[key]
+    elseif key == "cache/searchedfile" then
+
+        cachedPaths[key] = path.join({"%temp", cacheFolder, "searched.txt"})
+
+        return cachedPaths[key]
+    elseif key == "cache/subtitles" then
+
+        cachedPaths[key] = path.join({"%temp", cacheFolder, "subtitles"})
+
+        return cachedPaths[key]
+    elseif key == "cache" then
+
+        cachedPaths[key] = path.join({"%temp", cacheFolder})
+
+        return cachedPaths[key]
+    end
+
+    return nil
+end
+
+local function loadFlag(langCode)
+
+    if not langCode then return end
+
+    if flag.lang then
+
+        if flag.lang == langCode then return end
+
+        h.clearTable(flag.data)
+
+        flag.lang = nil
+        flag.data = nil
+    end
+
+    if langCode:len() == 2 then
+
+        local content = path.readFile(getPath("flag"):gsub("<lang>", langCode))
+
+        if not content then return end
+
+        flag.lang = langCode
+        flag.data = utils.parse_json(content)
 
         local maxIconHeight = 0
 
-        for _, values in pairs(flag) do
+        for _, values in pairs(flag.data) do
 
             local iconWidth, iconHeight = h.getShapeSize(values.d)
 
@@ -191,14 +251,12 @@ local function resizeShapes()
 
         local scale = config.sub_text_size / maxIconHeight
 
-        for _, values in pairs(flag) do
+        for _, values in pairs(flag.data) do
 
             values.d = h.scaleShape(values.d, scale)
         end
     end
 end
-
-resizeShapes()
 
 local function getQueryParams()
 
@@ -320,7 +378,8 @@ local function render()
 
             local posX, posY
             local hovered = currentIndex == k
-            local faded   = (search.results[k].installed and not hovered) and true or false
+            local faded   = false
+            --local faded   = (search.results[k].installed and not hovered) and true or false
 
             --hover or stripped
 
@@ -380,6 +439,15 @@ local function render()
                 posX = posX + panel:getLastWidth() + config.tag_right_margin
             end
 
+            --region
+
+            if search.results[k].region then
+
+                panel:properties({x = posX, y = posY, alpha = faded and 150 or 0}):tag(search.results[k].region)
+
+                posX = posX + panel:getLastWidth() + config.tag_right_margin
+            end
+
             --title
 
             panel:properties({x = posX, y = posY, align = 4, color = hovered and colors.hover or colors.text, alpha = faded and 150 or 0, clip = string.format("%s,%s,%s,%s", lineX, lineY, lineX + (data.boxWidth / 100 * 80), lineY + data.lineHeight)}):text(search.results[k].title)
@@ -413,13 +481,7 @@ local function render()
 
             if hovered then
 
-                if search.results[k].installed then
-
-                    panel:properties({x = posX, y = posY, color = colors.delete, align = 6, bold = true}):text("Delete")
-                else
-
-                    panel:properties({x = posX, y = posY, color = colors.hover, align = 6, bold = true}):text("Download")
-                end
+                panel:properties({x = posX, y = posY, color = colors.hover, align = 6, bold = true}):text("Download")
             else
 
                 panel:properties({x = posX, y = posY, color = colors.subtext, align = 6, bold = true}):text(search.results[k].provider)
@@ -466,8 +528,6 @@ local function reset()
     h.clearTable(query)
 
     mouse.x, mouse.y = 0, 0
-    offset           = 1
-    currentIndex     = 1
 end
 
 local function showMessage(str)
@@ -475,45 +535,6 @@ local function showMessage(str)
     message = str or ""
 
     render()
-end
-
-local function getPath(key)
-
-    if cachedPaths[key] then return cachedPaths[key] end
-
-    local cacheFolder = "mpvsubfinder"
-
-    if key == "video" then
-
-        local fullPath      = mp.get_property("path")
-        local dir, filename = utils.split_path(fullPath)
-        dir                 = dir:gsub("[\\//]$", "")
-        cachedPaths[key]    = dir
-
-        return cachedPaths[key]
-    elseif key == "cache/resultsfile" then
-
-        cachedPaths[key] = path.join({"%temp", cacheFolder, "results.json"})
-
-        return cachedPaths[key]
-    elseif key == "cache/searchedfile" then
-
-        cachedPaths[key] = path.join({"%temp", cacheFolder, "searched.txt"})
-
-        return cachedPaths[key]
-    elseif key == "cache/subtitles" then
-
-        cachedPaths[key] = path.join({"%temp", cacheFolder, "subtitles"})
-
-        return cachedPaths[key]
-    elseif key == "cache" then
-
-        cachedPaths[key] = path.join({"%temp", cacheFolder})
-
-        return cachedPaths[key]
-    end
-
-    return nil
 end
 
 local function startDownload(link, provider)
@@ -704,6 +725,7 @@ local function readResultsFromCache()
             search.results  = utils.parse_json(content)
 
             fillData()
+            loadFlag(currentLanguage)
         end
     end
 end
@@ -729,7 +751,9 @@ local function submit()
         return
     end
 
-    if not flags[query.tags.language] then
+    loadFlag(query.tags.language)
+
+    if not flag.data then
 
         showMessage("Language not found")
 

@@ -148,7 +148,7 @@ tag_right_margin=8
 2. Use title search if **IMDb ID** is not available or invalid.
 
 ### Tags
-- **language**: Language filter (Currently available values: `fr`, `it`, `es`, `zh`, `de`, `ru`, `ja`, `tr`, `en`)
+- **language**: Language filter (35 supported languages)
 - **s**: Season filter
 - **e**: Episode filter
 
@@ -164,9 +164,3 @@ Zootopia (2016) 1080P DSNP WEB-DL DDP5.1 Atmos H264.en.srt
 # 🔥Important Notes
 - To ensure accurate subtitle matching, the video directory should only contain episodes from the same series.
 - The year is treated as a tag even if it’s not in tag form (e.g., "avatar 2026") and is used when searching on added sites and **TMDB**. For more accurate results, try searching with the year.
-
-# 🎯 Future Plans
-- More languages
-- **SubSource** episode filter
-- Icons for some tags
-- Inspect mode (=subtitle preview)

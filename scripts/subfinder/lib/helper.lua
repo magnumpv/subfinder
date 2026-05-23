@@ -319,4 +319,9 @@ function this.commandCheck(cmd)
     return res.status == 0
 end
 
+function this.slugify(str)
+
+    return str:lower():gsub("%s", "_")
+end
+
 return this

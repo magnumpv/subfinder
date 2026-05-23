@@ -3,7 +3,7 @@ local path    = require "lib/path"
 local utils   = require "mp.utils"
 local request = require "lib/request"
 local msg     = require "mp.msg"
-local this    = {name = "unknown", url = "", hash = nil}
+local this    = {name = "unknown", url = "", languageBindings = {}, languageTags = {}}
 this.__index  = this
 
 local tmdpApiKey = "108862d1305e0848f2a0874ca1bf5098"
@@ -88,6 +88,20 @@ function this:findImdbId(queryParams)
     msg.info(string.format("IMDb ID found: %s", content.external_ids.imdb_id))
 
     return content.external_ids.imdb_id
+end
+
+function this:extendLanguage(language)
+
+    language = h.slugify(language)
+
+    return self.languageMap[language] and h.slugify(language..","..self.languageMap[language]) or language
+end
+
+function this:getRegion(language)
+
+    language = h.slugify(language)
+
+    return self.regionMap[language]
 end
 
 return this

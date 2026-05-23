@@ -7,32 +7,38 @@ local request  = require "lib/request"
 local path     = require "lib/path"
 local site     = base:new({
 
-    name = "subsource",
-    url  = {
+    name        = "subsource",
+    url         = {
 
-        api  = "https://api.subsource.net/api/v1",
-        site = "https://subsource.net"
+        api                   = "https://api.subsource.net/api/v1",
+        site                  = "https://subsource.net"
+    },
+    languageMap = {
+
+        spanish               = "Spanish Latin America,Spanish Spain",
+        french                = "French Canada,French France",
+        portuguese            = "Brazilian Portuguese",
+        chinese               = "Chinese Cantonese,Chinese Simplified,Chinese Traditional,Chinese BG Code,Chinese Bilingual"
+    },
+    regionMap   = {
+
+        spanish_latin_america = "latinamerica",
+        spanish_spain         = "spain",
+        chinese_cantonese     = "cantonese",
+        chinese_simplified    = "simplified",
+        chinese_traditional   = "traditional",
+        chinese_bg_code       = "bgcode",
+        chinese_bilingual     = "bilingual",
+        french_canada         = "canada",
+        french_france         = "france",
+        brazilian_portuguese  = "brazilian"
     }
 })
 
 function site:getPage(queryParams)
 
-    local languageMap = {
-
-        tr = "turkish",
-        en = "english",
-        fr = "french",
-        it = "italian",
-        es = "spanish",
-        zh = "chinese",
-        de = "german",
-        ru = "russian",
-        ja = "japanese"
-    }
-
-    if not languageMap[queryParams.tags.language] then return nil end
-
     local content
+    local language = self:extendLanguage(languages[queryParams.tags.language])
 
     --imdb id search
 
@@ -53,7 +59,7 @@ function site:getPage(queryParams)
         return nil
     end
 
-    content = request:timeout(15):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.api.."/subtitles", {movieId = content.data[1].movieId, language = languageMap[queryParams.tags.language], limit = 30})
+    content = request:timeout(15):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.api.."/subtitles", {movieId = content.data[1].movieId, language = language, limit = 30})
 
     if not (content.data and content.data[1]) then return nil end
 
@@ -84,6 +90,7 @@ function site:parse(content, queryParams)
             downloads    = row.downloads,
             hi           = row.hearingImpaired,
             foreign      = row.foreignParts,
+            region       = self:getRegion(row.language),
             quality      = qualityMap[row.releaseType],
             releases     = row.releaseInfo,
             date         = (row.createdAt) and dateConverter(row.createdAt) or nil

@@ -6,30 +6,45 @@ local subtitle = require "lib/subtitle"
 local request  = require "lib/request"
 local site     = base:new({
 
-    name = "subdl",
-    url  = {
+    name        = "subdl",
+    url         = {
 
-        api  = "https://api.subdl.com/api/v1",
-        site = "https://subdl.com"
+        api     = "https://api.subdl.com/api/v1",
+        site    = "https://subdl.com"
+    },
+    languageMap = {
+
+        fr      = "FR_CA",
+        pt      = "BR_PT",
+        sr      = "SR_CYRL",
+        zh      = "ZH_BG"
+    },
+    regionMap   = {
+
+        fr_ca   = "canada",
+        br_pt   = "brazilian",
+        sr_cyrl = "cyrillic",
+        zh_bg   = "bgcode"
     }
 })
 
 function site:getPage(queryParams)
 
     local content
+    local language = self:extendLanguage(queryParams.tags.language)
 
     --imdb id search
 
     if queryParams.imdbId then
 
-        content = request:timeout(15):sendRequest(self.url.api.."/subtitles", {api_key = config.api_subdl, imdb_id = queryParams.imdbId, languages = queryParams.tags.language, releases = "1", season_number = queryParams.tags.s, episode_number = queryParams.tags.e, subs_per_page = 30})
+        content = request:timeout(15):sendRequest(self.url.api.."/subtitles", {api_key = config.api_subdl, imdb_id = queryParams.imdbId, languages = language, releases = "1", season_number = queryParams.tags.s, episode_number = queryParams.tags.e, subs_per_page = 30})
     end
 
     --title search (with year)
 
     if not (content and content.subtitles and content.subtitles[1]) then
 
-        content = request:timeout(15):sendRequest(self.url.api.."/subtitles", {api_key = config.api_subdl, film_name = queryParams.title, year = queryParams.year, languages = queryParams.tags.language, releases = "1", season_number = queryParams.tags.s, episode_number = queryParams.tags.e, subs_per_page = 30})
+        content = request:timeout(15):sendRequest(self.url.api.."/subtitles", {api_key = config.api_subdl, film_name = queryParams.title, year = queryParams.year, languages = language, releases = "1", season_number = queryParams.tags.s, episode_number = queryParams.tags.e, subs_per_page = 30})
     end
 
     if not (content and content.subtitles and content.subtitles[1]) then
@@ -59,6 +74,7 @@ function site:parse(content, queryParams)
             downloadLink = row.url,
             uploader     = row.author,
             bulk         = row.full_season,
+            region       = self:getRegion(row.language),
             hi           = row.hi,
             releases     = row.releases
         }))

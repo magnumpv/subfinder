@@ -7,7 +7,7 @@ function subtitle:getEpisodeNumber(title)
        string.match(title, "s0*%d+[%s%.%-]*e0*(%d+)")
     or string.match(title, "%-[%s_]0*(%d+)")
     or string.match(title, "0*%d+%s*x%s*0*(%d+)")
-    or string.match(title:gsub("%[[^%]]*%]", ""):gsub("%([^%)]*%)", ""), "0*(%d+)$")
+    or string.match(title:gsub("%[[^%]]*%]", ""):gsub("%([^%)]*%)", ""), "[%.%s]0*(%d+)$")
 end
 
 function subtitle:properties(title)

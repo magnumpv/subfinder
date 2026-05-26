@@ -7,20 +7,20 @@ local request  = require "lib/request"
 local path     = require "lib/path"
 local site     = base:new({
 
-    name        = "subsource",
-    url         = {
+    name = "subsource",
+    url  = {
 
-        api                   = "https://api.subsource.net/api/v1",
-        site                  = "https://subsource.net"
+        api  = "https://api.subsource.net/api/v1",
+        site = "https://subsource.net"
     },
     languageMap = {
 
-        spanish               = "Spanish Latin America,Spanish Spain",
-        french                = "French Canada,French France",
-        portuguese            = "Brazilian Portuguese",
-        chinese               = "Chinese Cantonese,Chinese Simplified,Chinese Traditional,Chinese BG Code,Chinese Bilingual"
+        spanish    = "Spanish Latin America,Spanish Spain",
+        french     = "French Canada,French France",
+        portuguese = "Brazilian Portuguese",
+        chinese    = "Chinese Cantonese,Chinese Simplified,Chinese Traditional,Chinese BG Code,Chinese Bilingual"
     },
-    regionMap   = {
+    regionMap = {
 
         spanish_latin_america = "latinamerica",
         spanish_spain         = "spain",
@@ -32,34 +32,51 @@ local site     = base:new({
         french_canada         = "canada",
         french_france         = "france",
         brazilian_portuguese  = "brazilian"
-    }
+    },
+    limit = 100
 })
 
 function site:getPage(queryParams)
 
     local content
     local language = self:extendLanguage(languages[queryParams.tags.language])
+    local isSeries = self:isSeries(queryParams)
 
     --imdb id search
 
     if queryParams.imdbId then
 
-        content = request:timeout(15):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.api.."/movies/search", {searchType = "imdb", imdb = queryParams.imdbId, season = queryParams.tags.s})
+        content = request:timeout(15):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.api.."/movies/search", {
+
+            searchType = "imdb",
+            imdb       = queryParams.imdbId,
+            season     = (queryParams.tags and queryParams.tags.s) and queryParams.tags.s or nil
+        })
     end
 
     --title search (with year)
 
     if not (content and content.data and content.data[1] and content.data[1].movieId) then
 
-        content = request:timeout(15):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.api.."/movies/search", {searchType = "text", q = queryParams.title, year = queryParams.year, season = queryParams.tags.s})
+        content = request:timeout(15):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.api.."/movies/search", {
+
+            searchType = "text",
+            q          = queryParams.title,
+            year       = queryParams.year,
+            season     = (queryParams.tags and queryParams.tags.s) and queryParams.tags.s or nil,
+            type       = isSeries and "series" or "movie"
+        })
+
+        if not (content and content.data and content.data[1] and content.data[1].movieId and content.data) then return nil end
     end
 
-    if not (content and content.data and content.data[1] and content.data[1].movieId) then
+    content = request:timeout(15):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.api.."/subtitles", {
 
-        return nil
-    end
-
-    content = request:timeout(15):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.api.."/subtitles", {movieId = content.data[1].movieId, language = language, limit = 30})
+        movieId  = content.data[1].movieId,
+        language = language,
+        limit    = self.limit,
+        page     = queryParams.tags.page
+    })
 
     if not (content.data and content.data[1]) then return nil end
 
@@ -68,6 +85,7 @@ end
 
 function site:parse(content, queryParams)
 
+    local isSeries      = self:isSeries(queryParams)
     local qualityMap    = {web = "web", bluray = "bd"}
     local rows          = {}
     local dateConverter = function(raw)
@@ -79,22 +97,32 @@ function site:parse(content, queryParams)
 
     for _, row in ipairs(content) do
 
-        table.insert(rows, subtitle:newLine({
+        if row.productionType and row.productionType == "machine" then
 
-            id           = row.subtitleId,
-            title        = (row.releaseInfo and row.releaseInfo[1]) and row.releaseInfo[1] or nil,
-            pageLink     = row.link,
-            downloadLink = row.subtitleId and string.format("/subtitles/%s/download", row.subtitleId) or nil,
-            uploader     = (row.contributors and row.contributors[1] and row.contributors[1].displayname) and row.contributors[1].displayname or nil,
-            bulk         = (row.files and row.files > 1),
-            downloads    = row.downloads,
-            hi           = row.hearingImpaired,
-            foreign      = row.foreignParts,
-            region       = self:getRegion(row.language),
-            quality      = qualityMap[row.releaseType],
-            releases     = row.releaseInfo,
-            date         = (row.createdAt) and dateConverter(row.createdAt) or nil
-        }))
+            msg.warn(string.format("[%s] Machine translation skipped: %s", self.name, row.subtitleId or 0))
+        else
+
+            if self:filter(row, queryParams, isSeries) then
+
+               table.insert(rows, subtitle:newLine({
+
+                   id           = row.subtitleId,
+                   title        = (row.releaseInfo and row.releaseInfo[1]) and row.releaseInfo[1] or nil,
+                   pageLink     = row.link,
+                   downloadLink = row.subtitleId and string.format("/subtitles/%s/download", row.subtitleId) or nil,
+                   uploader     = self:getUploaderName(row),
+                   bulk         = (row.files and row.files > 1),
+                   downloads    = row.downloads,
+                   hi           = row.hearingImpaired or self:isHi(row.commentary),
+                   foreign      = row.foreignParts,
+                   region       = self:getRegion(row.language),
+                   forced       = self:isForced(h.joinStrings(row.commentary, (row.releaseInfo and row.releaseInfo[1]) and table.concat(row.releaseInfo, " ") or nil)),
+                   quality      = qualityMap[row.releaseType],
+                   releases     = row.releaseInfo,
+                   date         = (row.createdAt) and dateConverter(row.createdAt) or nil
+               }))
+            end
+        end
     end
 
     return rows
@@ -117,6 +145,28 @@ function site:download(link, savePath)
     end
 
     request:timeout(30):headers({["X-API-Key"] = config.api_subsource}):download(savePath):sendRequest(link)
+end
+
+function site:getUploaderName(t)
+
+    if not (t.contributors and t.contributors[1]) then return nil end
+
+    for _, c in pairs(t.contributors) do if c.id == t.uploaderId then return c.displayname end end
+
+    return nil
+end
+
+function site:filter(t, queryParams, isSeries)
+
+    if isSeries and queryParams.tags and queryParams.tags.e and t.releaseInfo and t.releaseInfo[1] then
+
+        local episodeNumber = tonumber(subtitle:getEpisodeNumber(t.releaseInfo[1]:lower()))
+
+        if not episodeNumber                   then return true  end
+        if episodeNumber ~= queryParams.tags.e then return false end
+    end
+
+    return true
 end
 
 return site

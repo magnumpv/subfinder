@@ -35,57 +35,35 @@ end
 
 function this:findImdbId(queryParams)
 
+    local isSeries = this:isSeries(queryParams)
     local content
 
-    content = request:timeout(15):sendRequest("https://api.themoviedb.org/3/search/multi", {api_key = tmdpApiKey, query = queryParams.title, primary_release_year = queryParams.year})
+    content = request:timeout(15):sendRequest("https://api.themoviedb.org/3/search/"..(isSeries and "tv" or "movie"), {api_key = tmdpApiKey, query = queryParams.title, primary_release_year = queryParams.year})
 
-    if not (content and content.results and content.results[1]) then return nil end
+    if not (content and content.results and content.results[1]) then msg.warn("[findimdbid] TMDB page not found.") return nil end
 
-    --filter (tt0412142)
-
-    local isSeries      = (queryParams.tags and queryParams.tags.s and queryParams.tags.e)
-    local k             = 1
-    local findDateField = function(row)
-
-        return row.release_date or row.first_air_date
-    end
+    local k            = 1
+    local getDateValue = function(row) return row.release_date or row.first_air_date end
 
     for i = 1, #content.results do
 
-        local passed = false
+        if queryParams.year then
 
-        if isSeries then
+            if getDateValue(content.results[i]) and getDateValue(content.results[i]):match("%d%d%d%d") == tostring(queryParams.year) then
 
-            if content.results[i].media_type == "tv" then
-
-                passed = true
+                k = i break
             end
         else
 
-            passed = true
+            k = i break
         end
-
-        if passed then
-
-            if queryParams.year and findDateField(content.results[i]) and findDateField(content.results[i]):match("%d%d%d%d") == tostring(queryParams.year) then
-
-                passed = true
-            else
-
-                passed = false
-            end
-        end
-
-        if passed then k = i break end
     end
 
-    if not (content.results[k].media_type and content.results[k].media_type == "tv" or content.results[k].media_type == "movie") then return nil end
+    content = request:timeout(15):sendRequest(string.format("https://api.themoviedb.org/3/%s/%s", (isSeries and "tv" or "movie"), content.results[k].id), {api_key = tmdpApiKey, append_to_response = "external_ids"})
 
-    content = request:timeout(15):sendRequest(string.format("https://api.themoviedb.org/3/%s/%s", content.results[k].media_type, content.results[k].id), {api_key = tmdpApiKey, append_to_response = "external_ids"})
+    if not (content and content.external_ids and content.external_ids.imdb_id) then msg.warn("[findimdbid] TMDB page does not contain an IMDb ID.") return nil end
 
-    if not (content and content.external_ids and content.external_ids.imdb_id) then return nil end
-
-    msg.info(string.format("IMDb ID found: %s", content.external_ids.imdb_id))
+    msg.info(string.format("IMDb page found: https://www.imdb.com/title/%s", content.external_ids.imdb_id))
 
     return content.external_ids.imdb_id
 end
@@ -102,6 +80,39 @@ function this:getRegion(language)
     language = h.slugify(language)
 
     return self.regionMap[language]
+end
+
+function this:isForced(str)
+
+      if not str then return nil end
+
+    str = str:lower()
+
+    return str:find("forced")
+end
+
+function this:isHi(str)
+
+    if not str then return nil end
+
+    str = " "..str:lower().." "
+
+    for _, w in pairs({"non?[%s%-]*hearing", "non?[%s%-]*hi", "non?[%s%-]*sdh", "hi removed", "sdh removed", "removed hearing"}) do
+
+        if str:find("[^a-z]"..w.."[^a-z]") then return false end
+    end
+
+    for _, w in pairs({"sdh", "hi", "hearing", "cc"}) do
+
+        if str:find("[^a-z]"..w.."[^a-z]") then return true end
+    end
+
+    return false
+end
+
+function this:isSeries(queryParams)
+
+    return queryParams.tags and queryParams.tags.s
 end
 
 return this

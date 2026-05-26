@@ -324,4 +324,20 @@ function this.slugify(str)
     return str:lower():gsub("%s", "_")
 end
 
+function this.joinStrings(...)
+
+    local t = {}
+
+    for _, v in ipairs({...}) do table.insert(t, tostring(v)) end
+
+    return table.concat(t, " ")
+end
+
+function this.hasValue(items, value)
+
+    for _, item in ipairs(items) do if item == value then return true end end
+
+    return false
+end
+
 return this

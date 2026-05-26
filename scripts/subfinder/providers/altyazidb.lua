@@ -7,7 +7,12 @@ local request  = require "lib/request"
 local site     = base:new({
 
     name = "altyazidb",
-    url  = {api = "https://altyazidb.com/api/v1", site = "https://altyazidb.com"}
+    url  = {
+
+        api = "https://altyazidb.com/api/v1",
+        site = "https://altyazidb.com"
+    },
+    limit = 100
 })
 
 function site:getPage(queryParams)
@@ -26,13 +31,17 @@ function site:getPage(queryParams)
 
     if queryParams.imdbId then
 
-        content = request:timeout(15):headers({["X-API-Key"] = config.api_altyazidb}):sendRequest(self.url.api.."/search", {imdb_id = queryParams.imdbId, lang = queryParams.tags.language, season = queryParams.tags.s, episode = queryParams.tags.e})
+        content = request:timeout(15):headers({["X-API-Key"] = config.api_altyazidb}):sendRequest(self.url.api.."/search", {
+
+            imdb_id = queryParams.imdbId,
+            lang    = queryParams.tags.language,
+            season  = queryParams.tags.s,
+            episode = queryParams.tags.e,
+            page    = queryParams.page
+        })
     end
 
-    if not (content and content.data and content.data[1]) then
-
-        return nil
-    end
+    if not (content and content.data and content.data[1]) then return nil end
 
     return content.data
 end

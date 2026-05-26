@@ -92,7 +92,10 @@ Controllers are disabled when the interface is opened in these themes:
 | **altyazidb**         | turkish, english    | ✔️               | ❌        | ❌       |
 | **turkcealtyazi**     | turkish, english    | ❌               | ✔️        | ✔️       |
 
-I don’t plan to add all subtitle sites, and I’m not sure what else to add. I can add popular sites, or you can add the sites you want.
+I don't plan to add every subtitle site, but I can add these sites if anyone requests them:
+- opensubtitles
+- addic7ed
+- tvsubtitles
 
 > [!WARNING]
 > Access to turkcealtyazi from outside Turkey is protected by Cloudflare.
@@ -144,13 +147,14 @@ tag_right_margin=8
 
 # 🔎Searching
 
-1. Get **IMDb ID** from **TMDB**
-2. Use title search if **IMDb ID** is not available or invalid.
+1. Get **IMDb ID** from **TMDB**.
+2. Use title search if **IMDb ID** search fails.
 
 ### Tags
 - **language**: Language filter (35 supported languages)
 - **s**: Season filter
 - **e**: Episode filter
+- **page**: Page filter (default: 1)
 
 # 🥏Saving
 Saves subtitles in the same folder as the video using its filename for **Plex** and **Jellyfin** compatibility.

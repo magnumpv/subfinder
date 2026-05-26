@@ -2,7 +2,7 @@
 
 ╔════════════════════════════════╗
 ║          MPV subfinder         ║
-║              v1.0.5            ║
+║              v1.0.6            ║
 ╚════════════════════════════════╝
 
 https://github.com/magnum357i/mpv-subfinder
@@ -84,6 +84,7 @@ colors = {
     hi           = "5551F9",
     batch        = "45AD18",
     foreign      = "CABF35",
+    forced       = "CABF35",
 
     --region
     latinamerica = "DA50B2",
@@ -264,7 +265,7 @@ local function getQueryParams()
 
     local findTag = function (name)
 
-        return searched:match(name..":(%S+)")
+        return searched:match("%s"..name..":(%S+)")
     end
 
     local getYear = function ()
@@ -282,7 +283,8 @@ local function getQueryParams()
 
             language = findTag("language"),
             s        = tonumber(findTag("s")),
-            e        = tonumber(findTag("e"))
+            e        = tonumber(findTag("e")),
+            page     = tonumber(findTag("page"))
         }
     }
 end
@@ -377,13 +379,13 @@ local function render()
         for k = offset, offset + data.lineCount - 1 do
 
             local posX, posY
-            local hovered = currentIndex == k
+            local selected = currentIndex == k
             local faded   = false
-            --local faded   = (search.results[k].installed and not hovered) and true or false
+            --local faded   = (search.results[k].installed and not selected) and true or false
 
-            --hover or stripped
+            --selected or stripped
 
-            if hovered then
+            if selected then
 
                 panel:properties({x = data.x, y = lineY, color = colors.text}):shape(data.boxWidth, data.lineHeight, 0)
             elseif m % 2 == 0 then
@@ -414,7 +416,7 @@ local function render()
 
             --hi
 
-            if search.results[k].hi then
+            if search.results[k].hi == true then
 
                 panel:properties({x = posX, y = posY, alpha = faded and 150 or 0}):tag("hi")
 
@@ -423,16 +425,25 @@ local function render()
 
             --foreign
 
-            if search.results[k].foreign then
+            if search.results[k].foreign == true then
 
                 panel:properties({x = posX, y = posY, alpha = faded and 150 or 0}):tag("foreign")
 
                 posX = posX + panel:getLastWidth() + config.tag_right_margin
             end
 
+            --forced
+
+            if search.results[k].forced == true then
+
+                panel:properties({x = posX, y = posY, alpha = faded and 150 or 0}):tag("forced")
+
+                posX = posX + panel:getLastWidth() + config.tag_right_margin
+            end
+
             --bulk
 
-            if search.results[k].bulk then
+            if search.results[k].bulk == true then
 
                 panel:properties({x = posX, y = posY, alpha = faded and 150 or 0}):tag("batch")
 
@@ -450,7 +461,7 @@ local function render()
 
             --title
 
-            panel:properties({x = posX, y = posY, align = 4, color = hovered and colors.hover or colors.text, alpha = faded and 150 or 0, clip = string.format("%s,%s,%s,%s", lineX, lineY, lineX + (data.boxWidth / 100 * 80), lineY + data.lineHeight)}):text(search.results[k].title)
+            panel:properties({x = posX, y = posY, align = 4, color = selected and colors.hover or colors.text, alpha = faded and 150 or 0, clip = string.format("%s,%s,%s,%s", lineX, lineY, lineX + (data.boxWidth / 100 * 80), lineY + data.lineHeight)}):text(search.results[k].title)
 
 
             posX = lineX + config.pin_right_margin
@@ -458,28 +469,28 @@ local function render()
 
             --uploader
 
-            panel:properties({x = posX, y = posY, color = hovered and colors.hover or colors.subtext, align = 4, alpha = faded and 150 or 0}):icon("uploader", search.results[k].uploader)
+            panel:properties({x = posX, y = posY, color = selected and colors.hover or colors.subtext, align = 4, alpha = faded and 150 or 0}):icon("uploader", search.results[k].uploader)
 
             --date
 
             if search.results[k].date then
 
-                panel:properties({x = posX + (data.boxWidth / 100 * config.column_width), y = posY, color = hovered and colors.hover or colors.subtext, align = 4, alpha = faded and 150 or 0}):icon("date", search.results[k].date)
+                panel:properties({x = posX + (data.boxWidth / 100 * config.column_width), y = posY, color = selected and colors.hover or colors.subtext, align = 4, alpha = faded and 150 or 0}):icon("date", search.results[k].date)
             end
 
             --download
 
             if search.results[k].downloads then
 
-                panel:properties({x = posX + (data.boxWidth / 100 * config.column_width * 2), y = posY, color = hovered and colors.hover or colors.subtext, align = 4, alpha = faded and 150 or 0}):icon("download", search.results[k].downloads)
+                panel:properties({x = posX + (data.boxWidth / 100 * config.column_width * 2), y = posY, color = selected and colors.hover or colors.subtext, align = 4, alpha = faded and 150 or 0}):icon("download", search.results[k].downloads)
             end
 
             posX = data.boxWidth
             posY = lineY + data.lineHeight / 2
 
-            --site name or download/delete button
+            --site name or download button
 
-            if hovered then
+            if selected then
 
                 panel:properties({x = posX, y = posY, color = colors.hover, align = 6, bold = true}):text("Download")
             else
@@ -575,7 +586,7 @@ local function startDownload(link, provider)
     local subtitleOfThisVideo   = ""
     local attachedSubtitleCount = 0
 
-    if not (query.tags and (query.tags.s or query.tags.e)) then
+    if not (query.tags and query.tags.s) then
 
         attachSubtitle(subtitles[1], titleProperties.original)
 

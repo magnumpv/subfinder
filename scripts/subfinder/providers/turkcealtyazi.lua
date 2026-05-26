@@ -6,7 +6,10 @@ local request  = require "lib/request"
 local site     = base:new({
 
     name = "turkcealtyazi",
-    url  = {site = "https://turkcealtyazi.org"}
+    url  = {
+
+        site = "https://turkcealtyazi.org"
+    }
 })
 
 function site:getCategory(content)
@@ -32,6 +35,7 @@ function site:getPage(queryParams)
 
     if not languageMap[queryParams.tags.language] then return nil end
 
+    local isSeries = self:isSeries(queryParams)
     local content
 
     --imdb id search
@@ -56,7 +60,7 @@ function site:getPage(queryParams)
             sira     = "3",
             o        = "2",
             fragman  = "3",
-            tip      = "3",
+            tip      = isSeries and "2" or "1",
             taplimit = "0",
             taolimit = "0",
             plimit   = "0",
@@ -80,7 +84,7 @@ end
 
 function site:parse(content, queryParams)
 
-    local qualityMap    = {
+    local qualityMap = {
 
         ["rps c1"]  = "dvd",
         ["rps r2"]  = "dvd",
@@ -97,21 +101,20 @@ function site:parse(content, queryParams)
         ["rip5"]    = "bd",
         ["rip9"]    = "web"
     }
-    local languageMap       = {
+    local languageMap = {
 
         tr = "flagtr",
         en = "flagen"
     }
-    local category      = self:getCategory(content)
-    local rows          = {}
+    local isSeries = self:isSeries(queryParams)
+    local rows     = {}
+
     local dateConverter = function(raw)
 
         local year, month, day = string.match(raw, "(%d+)%-(%d+)%-(%d+)")
 
         return year and {d = day, m = month, y = year} or nil
     end
-
-    if not languageMap[queryParams.tags.language] then return {} end
 
     local getSeason = function(str)
 
@@ -124,7 +127,15 @@ function site:parse(content, queryParams)
 
         if not str then return nil end
 
-        return str:match("E0?(%d+)") or str:match("Paket")
+        if str:match("Paket") then return {text = "Paket"} end
+
+        local episodeStart, episodeEnd = str:match("E0*(%d+)"), str:match("E0*%d+%-0*(%d+)")
+
+        episodeEnd = episodeEnd or episodeStart
+
+        if not (episodeStart and episodeEnd) then return nil end
+
+        return {text = episodeStart == episodeEnd and episodeStart or episodeStart.."-"..episodeEnd, first = tonumber(episodeStart), last = tonumber(episodeEnd)}
     end
 
     local findValues = function(row)
@@ -146,18 +157,15 @@ function site:parse(content, queryParams)
         })
     end
 
-    if category == "series" then
+    if isSeries then
 
-        local seasonNumber  = queryParams.tags.s or 1
-        local episodeNumber = queryParams.tags.e or 1
-
-        for row in content:gmatch('<div class="altsonsez1[^"]*sezon_'..seasonNumber..'[^"]*"[^>]->(.-<div class="ta%-container">.-</div>%s*</div>)') do
+        for row in content:gmatch('<div class="altsonsez1[^"]*sezon_'..queryParams.tags.s..'[^"%d]*"[^>]*>(.-<div class="ta%-container">.-</div>%s*</div>)') do
 
             local values = findValues(row)
 
-            if values and values.episode and (tostring(episodeNumber) == tostring(values.episode) or tostring(values.episode) == "Paket") then
+            if values and values.episode and (not queryParams.tags.e or (values.episode.text == "Paket" or queryParams.tags.e >= values.episode.first and queryParams.tags.e <= values.episode.last)) then
 
-                values.title = string.format("(S:%s-B:%s) %s", values.season, values.episode, values.title)
+                values.title = string.format("(S:%s-B:%s) %s", values.season, values.episode.text, values.title)
 
                 table.insert(rows, values)
             end

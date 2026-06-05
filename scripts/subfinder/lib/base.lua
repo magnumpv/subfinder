@@ -38,7 +38,7 @@ function this:findImdbId(queryParams)
     local isSeries = this:isSeries(queryParams)
     local content
 
-    content = request:timeout(15):sendRequest("https://api.themoviedb.org/3/search/"..(isSeries and "tv" or "movie"), {api_key = tmdpApiKey, query = queryParams.title, primary_release_year = queryParams.year})
+    content = request:timeout(10):sendRequest("https://api.themoviedb.org/3/search/"..(isSeries and "tv" or "movie"), {api_key = tmdpApiKey, query = queryParams.title, primary_release_year = queryParams.year})
 
     if not (content and content.results and content.results[1]) then msg.warn("[findimdbid] TMDB page not found.") return nil end
 
@@ -59,7 +59,7 @@ function this:findImdbId(queryParams)
         end
     end
 
-    content = request:timeout(15):sendRequest(string.format("https://api.themoviedb.org/3/%s/%s", (isSeries and "tv" or "movie"), content.results[k].id), {api_key = tmdpApiKey, append_to_response = "external_ids"})
+    content = request:timeout(10):sendRequest(string.format("https://api.themoviedb.org/3/%s/%s", (isSeries and "tv" or "movie"), content.results[k].id), {api_key = tmdpApiKey, append_to_response = "external_ids"})
 
     if not (content and content.external_ids and content.external_ids.imdb_id) then msg.warn("[findimdbid] TMDB page does not contain an IMDb ID.") return nil end
 

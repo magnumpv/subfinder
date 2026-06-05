@@ -1,13 +1,58 @@
 local h        = require "lib/helper"
-local subtitle = {}
+local subtitle = {
+
+    spaces         = "%s%.%-_",
+    brackets       = "%[%]%(%)",
+    rangeSeparator = "%-%~"
+}
 
 function subtitle:getEpisodeNumber(title)
 
+    title = title:lower()
+    title = title:gsub("%d+p", "")
+    title = title:gsub("%d%d%d%dx%d+", "")
+    title = title:gsub("19%d%d", ""):gsub("20%d%d", "")
+    title = title:gsub("season %d+", "")
+
+    return tonumber(
+       string.match(title, "s0*%d+["..self.spaces.."]*e0*(%d+)") --> s1e3
+    or string.match(title, "%-["..self.spaces.."]0*(%d+)") --> - 03
+    or string.match(title, "0*%d+["..self.spaces.."]*x["..self.spaces.."]*0*(%d+)") --> 1x3
+    or string.match(title, "["..self.spaces.."]ep?["..self.spaces.."]*0*(%d+)") --> ep3 | e3
+    or string.match(title, "episode["..self.spaces.."]0*(%d+)") --> episode 3
+    or string.match(title, "["..self.brackets.."]0*(%d+)["..self.brackets.."]") --> [3]
+    or string.match(title, "["..self.spaces.."]*ova["..self.spaces.."]*0*(%d+)") --> ova3
+    or string.match(title, "#0*(%d+)") --> #3
+
+    --last resort
+    or string.match(title, "0*(%d+)["..self.spaces.."]%-["..self.spaces.."]") --> 03 -
+    or string.match(title:gsub("%[[^%]]*%]", ""):gsub("%([^%)]*%)", ""), "["..self.spaces.."]0*(%d+)%s*$")) --> 3$
+end
+
+function subtitle:getEpisodeRange(title)
+
+    local episodes = {title:match("0*(%d+)["..self.spaces.."]*["..self.rangeSeparator.."]["..self.spaces.."]*[eE]?0*(%d+)")}
+
+    if #episodes > 0 then return {from = tonumber(episodes[1]), to = tonumber(episodes[2])} end
+
+    local episode = self:getEpisodeNumber(title)
+
+    if episode then return {from = episode, to = episode} end
+
+    return nil
+end
+
+function subtitle:getSeasonNumber(title)
+
+    title = title:lower()
+    title = title:gsub("%d+p", "")
+    title = title:gsub("%d%d%d%dx%d+", "")
+    title = title:gsub("19%d%d", ""):gsub("20%d%d", "")
+
     return
-       string.match(title, "s0*%d+[%s%.%-]*e0*(%d+)")
-    or string.match(title, "%-[%s_]0*(%d+)")
-    or string.match(title, "0*%d+%s*x%s*0*(%d+)")
-    or string.match(title:gsub("%[[^%]]*%]", ""):gsub("%([^%)]*%)", ""), "[%.%s]0*(%d+)$")
+       string.match(title, "["..self.spaces.."]s0*(%d+)")
+    or string.match(title, "0*(%d+)["..self.spaces.."]*x["..self.spaces.."]*0*%d+")
+    or string.match(title, "season["..self.spaces.."]0*(%d+)")
 end
 
 function subtitle:properties(title)
@@ -20,22 +65,21 @@ function subtitle:properties(title)
         blutv   = "blutv",
         apple   = "atvp,atv,it"
     }
-    local spaces      = "[%.%s%-_%[%]%(%)]"
-    local t           = {}
-    title             = title:lower()
+    local t = {}
+    title   = title:lower()
 
     --quality
 
     if
-       string.find(title, "blu[%s%-_]*ray")
-    or string.find(title, "b[dr][%s%-_]*rip")
+       string.find(title, "blu["..self.spaces.."]*ray")
+    or string.find(title, "b[dr]["..self.spaces.."]*rip")
     or string.find(title, "remaster")
     or string.find(title, "extended")
-    or string.find(title.." ", spaces.."bd"..spaces)
+    or string.find(title.." ", "["..self.spaces..self.brackets.."]".."bd".."["..self.spaces..self.brackets.."]")
     then
 
         t.quality = "bd"
-    elseif string.find(title, "web[%s%-_]*dl") or string.find(title, "web[%s%-_]*rip") or string.find(title, spaces.."web"..spaces) then
+    elseif string.find(title, "web["..self.spaces.."]*dl") or string.find(title, "web["..self.spaces.."]*rip") or string.find(title, "["..self.spaces..self.brackets.."]".."web".."["..self.spaces..self.brackets.."]") then
 
         t.quality = "web"
     elseif string.find(title, "dvd") then
@@ -45,7 +89,7 @@ function subtitle:properties(title)
 
     --season
 
-    t.season = string.match(title, "s0*(%d+)[%s%.%-]*e") or string.match(title, "0*(%d+)%s*x%s*0?%d+")
+    t.season = self:getSeasonNumber(title)
 
     --episode
 
@@ -65,7 +109,7 @@ function subtitle:properties(title)
 
         for _, variant in pairs(value) do
 
-            if string.find(title.." ", spaces..variant..spaces) then t.platform = platform break end
+            if string.find(title.." ", "["..self.spaces..self.brackets.."]"..variant.."["..self.spaces..self.brackets.."]") then t.platform = platform break end
         end
     end
 

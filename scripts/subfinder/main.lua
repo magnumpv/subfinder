@@ -2,7 +2,7 @@
 
 ╔════════════════════════════════╗
 ║          MPV subfinder         ║
-║              v1.0.6            ║
+║              v1.0.7            ║
 ╚════════════════════════════════╝
 
 https://github.com/magnum357i/mpv-subfinder
@@ -28,6 +28,7 @@ config         = {
     video_types        = "mkv,mp4,avi,ts,m2ts,ogm",
     subtitle_types     = "srt,ass,ssa,vtt,sub,sup,pgs",
     archive_types      = "zip,rar,7z",
+    block_ai           = false,
 
     --API KEYS
     api_subsource      = "",
@@ -200,7 +201,7 @@ local function getPath(key)
         return cachedPaths[key]
     elseif key == "cache/searchedfile" then
 
-        cachedPaths[key] = path.join({"%temp", cacheFolder, "searched.txt"})
+        cachedPaths[key] = path.join({"%temp", cacheFolder, "searched.json"})
 
         return cachedPaths[key]
     elseif key == "cache/subtitles" then
@@ -488,15 +489,9 @@ local function render()
             posX = data.boxWidth
             posY = lineY + data.lineHeight / 2
 
-            --site name or download button
+            --site name
 
-            if selected then
-
-                panel:properties({x = posX, y = posY, color = colors.hover, align = 6, bold = true}):text("Download")
-            else
-
-                panel:properties({x = posX, y = posY, color = colors.subtext, align = 6, bold = true}):text(search.results[k].provider)
-            end
+            panel:properties({x = posX, y = posY, align = 6, color = selected and colors.hover or colors.text, bold = true}):text(search.results[k].provider)
 
             lineY = lineY + data.lineHeight
             m     = m + 1
@@ -538,6 +533,7 @@ local function reset()
     h.clearTable(cachedPaths)
     h.clearTable(query)
 
+    search.text      = ""
     mouse.x, mouse.y = 0, 0
 end
 
@@ -598,7 +594,7 @@ local function startDownload(link, provider)
 
         for _, s in pairs(subtitles) do
 
-            local eNumber = subtitle:getEpisodeNumber(s:lower())
+            local eNumber = subtitle:getEpisodeNumber(s)
 
             if eNumber then
 
@@ -614,7 +610,7 @@ local function startDownload(link, provider)
 
         for _, v in pairs(videos) do
 
-            local eNumber = subtitle:getEpisodeNumber(v:lower())
+            local eNumber = subtitle:getEpisodeNumber(v)
 
             if eNumber then
 
@@ -663,10 +659,10 @@ local function startDownload(link, provider)
 
     if attachedSubtitleCount > 0 then
 
-        mp.osd_message("Download completed!", 3)
+        mp.osd_message("Completed!", 3)
     else
 
-        mp.osd_message("Download failed!", 3)
+        mp.osd_message("Failed!", 3)
     end
 end
 
@@ -697,12 +693,11 @@ end
 
 local function pasteLink()
 
-    currentLanguage          = "xx"
-    local filename           = mp.get_property("filename")
-    titleProperties          = subtitle:properties(h.removeExt(filename))
-    titleProperties.original = filename
-    local clipboard          = mp.get_property("clipboard/text", "")
-    local provider           = getProviderFromLink(clipboard)
+    loadTitleProperties()
+
+    currentLanguage = "xx"
+    local clipboard = mp.get_property("clipboard/text", "")
+    local provider  = getProviderFromLink(clipboard)
 
     if not (provider and providers[provider]) then mp.osd_message(string.format("Provider (%s) not found!", clipboard:sub(1,50)), 5) return end
 
@@ -716,27 +711,32 @@ local function writeResultsToCache()
 
     if not ok then mp.osd_message("Results not saved!", 3) return end
 
-    path.createFile(getPath("cache/searchedfile"), search.text)
+    path.createFile(getPath("cache/searchedfile"), utils.format_json({filename = titleProperties.original, searched = search.text}))
 end
 
 local function readResultsFromCache()
 
-    local content
+    local searchedFile = path.readFile(getPath("cache/searchedfile"))
 
-    content = path.readFile(getPath("cache/searchedfile"))
+    if searchedFile then
 
-    if content and search.text == content then
+        searchedFile = utils.parse_json(searchedFile)
 
-        content = path.readFile(getPath("cache/resultsfile"))
+        if searchedFile.filename == titleProperties.original then
 
-        if content then
+            local resultsFile = path.readFile(getPath("cache/resultsfile"))
 
-            local query     = getQueryParams()
-            currentLanguage = query.tags.language
-            search.results  = utils.parse_json(content)
+            if resultsFile then
 
-            fillData()
-            loadFlag(currentLanguage)
+                resultsFile     = utils.parse_json(resultsFile)
+                search.text     = searchedFile.searched
+                query           = getQueryParams()
+                currentLanguage = query.tags.language
+                search.results  = resultsFile
+
+                fillData()
+                loadFlag(currentLanguage)
+            end
         end
     end
 end
@@ -861,6 +861,16 @@ local function togglePlayerControllers()
     end
 end
 
+local function loadTitleProperties()
+
+    if not titleProperties.original then
+
+        local filename           = mp.get_property("filename")
+        titleProperties          = subtitle:properties(h.removeExt(filename))
+        titleProperties.original = filename
+    end
+end
+
 local function toggle()
 
     togglePlayerControllers()
@@ -902,10 +912,8 @@ local function toggle()
         end
 
         input.init()
-
-        local filename           = mp.get_property("filename")
-        titleProperties          = subtitle:properties(h.removeExt(filename))
-        titleProperties.original = filename
+        loadTitleProperties()
+        readResultsFromCache()
 
         if search.text == "" then
 
@@ -919,8 +927,6 @@ local function toggle()
 
             search.text = searched
         end
-
-        readResultsFromCache()
 
         input.font_size    = config.text_size
         input.cursor_theme = config.cursor_color
@@ -1146,11 +1152,6 @@ end)
 mp.observe_property("display-hidpi-scale", "native", function (name, value)
 
     if opened then fillData() render() end
-end)
-
-mp.register_event("file-loaded", function()
-
-    search.text = ""
 end)
 
 mp.add_key_binding(nil, "subfinder",           toggle)

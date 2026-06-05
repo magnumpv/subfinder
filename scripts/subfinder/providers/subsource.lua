@@ -46,7 +46,7 @@ function site:getPage(queryParams)
 
     if queryParams.imdbId then
 
-        content = request:timeout(15):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.api.."/movies/search", {
+        content = request:timeout(10):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.api.."/movies/search", {
 
             searchType = "imdb",
             imdb       = queryParams.imdbId,
@@ -58,7 +58,7 @@ function site:getPage(queryParams)
 
     if not (content and content.data and content.data[1] and content.data[1].movieId) then
 
-        content = request:timeout(15):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.api.."/movies/search", {
+        content = request:timeout(10):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.api.."/movies/search", {
 
             searchType = "text",
             q          = queryParams.title,
@@ -70,7 +70,7 @@ function site:getPage(queryParams)
         if not (content and content.data and content.data[1] and content.data[1].movieId and content.data) then return nil end
     end
 
-    content = request:timeout(15):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.api.."/subtitles", {
+    content = request:timeout(10):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.api.."/subtitles", {
 
         movieId  = content.data[1].movieId,
         language = language,
@@ -97,31 +97,43 @@ function site:parse(content, queryParams)
 
     for _, row in ipairs(content) do
 
-        if row.productionType and row.productionType == "machine" then
+        local passed = true
 
-            msg.warn(string.format("[%s] Machine translation skipped: %s", self.name, row.subtitleId or 0))
-        else
+        if config.block_ai and row.productionType and row.productionType == "machine" then
 
-            if self:filter(row, queryParams, isSeries) then
+            msg.warn(string.format("[%s] Subtitle skipped. Reason: %s", self.name, "ai translate"))
+            h.log(row)
 
-               table.insert(rows, subtitle:newLine({
+            passed = false
+        end
 
-                   id           = row.subtitleId,
-                   title        = (row.releaseInfo and row.releaseInfo[1]) and row.releaseInfo[1] or nil,
-                   pageLink     = row.link,
-                   downloadLink = row.subtitleId and string.format("/subtitles/%s/download", row.subtitleId) or nil,
-                   uploader     = self:getUploaderName(row),
-                   bulk         = (row.files and row.files > 1),
-                   downloads    = row.downloads,
-                   hi           = row.hearingImpaired or self:isHi(row.commentary),
-                   foreign      = row.foreignParts,
-                   region       = self:getRegion(row.language),
-                   forced       = self:isForced(h.joinStrings(row.commentary, (row.releaseInfo and row.releaseInfo[1]) and table.concat(row.releaseInfo, " ") or nil)),
-                   quality      = qualityMap[row.releaseType],
-                   releases     = row.releaseInfo,
-                   date         = (row.createdAt) and dateConverter(row.createdAt) or nil
-               }))
-            end
+        if passed and not self:filter(row, queryParams, isSeries) then
+
+            msg.warn(string.format("[%s] Subtitle skipped. Reason: %s", self.name, "episode"))
+            h.log(row)
+
+            passed = false
+        end
+
+        if passed then
+
+            table.insert(rows, subtitle:newLine({
+
+                id           = row.subtitleId,
+                title        = (row.releaseInfo and row.releaseInfo[1]) and row.releaseInfo[1] or nil,
+                pageLink     = row.link,
+                downloadLink = row.subtitleId and string.format("/subtitles/%s/download", row.subtitleId) or nil,
+                uploader     = self:getUploaderName(row),
+                bulk         = (row.files and row.files > 1),
+                downloads    = row.downloads,
+                hi           = row.hearingImpaired or self:isHi(row.commentary),
+                foreign      = row.foreignParts,
+                region       = self:getRegion(row.language),
+                forced       = self:isForced(h.joinStrings(row.commentary, (row.releaseInfo and row.releaseInfo[1]) and table.concat(row.releaseInfo, " ") or nil)),
+                quality      = qualityMap[row.releaseType],
+                releases     = row.releaseInfo,
+                date         = (row.createdAt) and dateConverter(row.createdAt) or nil
+            }))
         end
     end
 
@@ -144,7 +156,7 @@ function site:download(link, savePath)
         msg.error("Invalid link!") return
     end
 
-    request:timeout(30):headers({["X-API-Key"] = config.api_subsource}):download(savePath):sendRequest(link)
+    request:timeout(15):headers({["X-API-Key"] = config.api_subsource}):download(savePath):sendRequest(link)
 end
 
 function site:getUploaderName(t)
@@ -160,10 +172,10 @@ function site:filter(t, queryParams, isSeries)
 
     if isSeries and queryParams.tags and queryParams.tags.e and t.releaseInfo and t.releaseInfo[1] then
 
-        local episodeNumber = tonumber(subtitle:getEpisodeNumber(t.releaseInfo[1]:lower()))
+        local episodeNumbers = subtitle:getEpisodeRange(t.releaseInfo[1])
 
-        if not episodeNumber                   then return true  end
-        if episodeNumber ~= queryParams.tags.e then return false end
+        if not episodeNumbers                                                                          then return true  end
+        if not (queryParams.tags.e >= episodeNumbers.from and queryParams.tags.e <= episodeNumbers.to) then return false end
     end
 
     return true

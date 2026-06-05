@@ -39,7 +39,7 @@ function site:getPage(queryParams)
 
     if queryParams.imdbId then
 
-        content = request:timeout(15):sendRequest(self.url.api.."/subtitles", {
+        content = request:timeout(10):sendRequest(self.url.api.."/subtitles", {
 
             api_key        = config.api_subdl,
             imdb_id        = queryParams.imdbId,
@@ -57,7 +57,7 @@ function site:getPage(queryParams)
 
     if not (content and content.subtitles and content.subtitles[1]) then
 
-        content = request:timeout(15):sendRequest(self.url.api.."/subtitles", {
+        content = request:timeout(10):sendRequest(self.url.api.."/subtitles", {
 
             api_key        = config.api_subdl,
             film_name      = queryParams.title,
@@ -80,18 +80,22 @@ end
 
 function site:parse(content, queryParams)
 
-    local isSeries      = self:isSeries(queryParams)
-    local rows          = {}
-    local dateConverter = function(raw)
-
-        local year, month, day = string.match(raw, "(%d+)%-(%d+)%-(%d+)")
-
-        return year and {d = day, m = month, y = year} or nil
-    end
+    local isSeries = self:isSeries(queryParams)
+    local rows     = {}
 
     for _, row in ipairs(content) do
 
-        if self:filter(row, queryParams, isSeries) then
+        local passed = true
+
+        if not self:filter(row, queryParams, isSeries) then
+
+            msg.warn(string.format("[%s] Subtitle skipped. Reason: %s", self.name, "episode"))
+            h.log(row)
+
+            passed = false
+        end
+
+        if passed then
 
             table.insert(rows, subtitle:newLine({
 
@@ -126,17 +130,17 @@ function site:download(link, savePath)
         msg.error("Invalid link!") return
     end
 
-    request:timeout(30):download(savePath):sendRequest(link, {api_key = config.api_subdl})
+    request:timeout(15):download(savePath):sendRequest(link, {api_key = config.api_subdl})
 end
 
 function site:filter(t, queryParams, isSeries)
 
-    if isSeries and queryParams.tags and queryParams.tags.e and t.release_name then
+    if isSeries and queryParams.tags and queryParams.tags.e and t.release_name and (t.full_season and t.full_season == false) then
 
-        local episodeNumber = tonumber(subtitle:getEpisodeNumber(t.release_name:lower()))
+        local episodeNumbers = subtitle:getEpisodeRange(t.release_name)
 
-        if not episodeNumber                   then return true  end
-        if episodeNumber ~= queryParams.tags.e then return false end
+        if not episodeNumbers                                                                          then return true  end
+        if not (queryParams.tags.e >= episodeNumbers.from and queryParams.tags.e <= episodeNumbers.to) then return false end
     end
 
     return true

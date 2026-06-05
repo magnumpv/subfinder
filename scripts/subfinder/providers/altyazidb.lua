@@ -31,7 +31,7 @@ function site:getPage(queryParams)
 
     if queryParams.imdbId then
 
-        content = request:timeout(15):headers({["X-API-Key"] = config.api_altyazidb}):sendRequest(self.url.api.."/search", {
+        content = request:timeout(10):headers({["X-API-Key"] = config.api_altyazidb}):sendRequest(self.url.api.."/search", {
 
             imdb_id = queryParams.imdbId,
             lang    = queryParams.tags.language,
@@ -52,16 +52,31 @@ function site:parse(content, queryParams)
 
     for _, row in ipairs(content) do
 
-        table.insert(rows, subtitle:newLine({
+        local passed = true
 
-            id           = row.id,
-            title        = (row.releases and row.releases[1]) and row.releases[1] or row.translator,
-            downloadLink = row.download_url and row.download_url:gsub(".+(/download)", "%1") or nil,
-            uploader     = row.uploader,
-            downloads    = row.downloads,
-            hi           = row.hearing_impaired,
-            releases     = row.translator_note
-        }))
+        if config.block_ai and row.ai_ceviri and row.ai_ceviri == 1 then
+
+            msg.warn(string.format("[%s] Subtitle skipped. Reason: %s", self.name, "ai translate"))
+            h.log(row)
+
+            passed = false
+        end
+
+        if passed then
+
+            table.insert(rows, subtitle:newLine({
+
+                id           = row.id,
+                title        = (row.releases and row.releases[1]) and row.releases[1] or row.translator,
+                downloadLink = row.download_url and row.download_url:gsub(".+(/download)", "%1") or nil,
+                uploader     = row.uploader,
+                downloads    = row.downloads,
+                forced       = row.forced and row.forced == 1,
+                foreign      = row.foreign_parts and row.foreign_parts == 1,
+                hi           = row.hearing_impaired and row.hearing_impaired == 1,
+                releases     = row.translator_note
+            }))
+        end
     end
 
     return rows
@@ -79,7 +94,7 @@ function site:download(link, savePath)
         msg.error("Invalid link!") return
     end
 
-    request:timeout(30):headers({["X-API-Key"] = config.api_altyazidb}):download(savePath):sendRequest(link)
+    request:timeout(15):headers({["X-API-Key"] = config.api_altyazidb}):download(savePath):sendRequest(link)
 end
 
 return site

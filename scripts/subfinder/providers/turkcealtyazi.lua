@@ -42,14 +42,14 @@ function site:getPage(queryParams)
 
     if queryParams.imdbId then
 
-        content = request:timeout(15):sendRequest(self.url.site.."/find.php", {cat = "sub", find = queryParams.imdbId})
+        content = request:timeout(10):sendRequest(self.url.site.."/find.php", {cat = "sub", find = queryParams.imdbId})
     end
 
     --title search (with year)
 
     if not (content and self:getCategory(content)) then
 
-        content = request:timeout(15):sendRequest(self.url.site.."/filtre.php", {
+        content = request:timeout(10):sendRequest(self.url.site.."/filtre.php", {
 
             tur      = "",
             tur2     = "",
@@ -74,7 +74,7 @@ function site:getPage(queryParams)
 
         if not firstResult then return nil end
 
-        content = request:timeout(15):sendRequest(self.url.site..firstResult)
+        content = request:timeout(10):sendRequest(self.url.site..firstResult)
 
         if not (content and self:getCategory(content)) then return nil end
     end
@@ -196,7 +196,7 @@ function site:download(link, savePath)
         msg.error("Invalid link!") return
     end
 
-    local subtitlePageContent = request:timeout(15):sendRequest(link)
+    local subtitlePageContent = request:timeout(10):sendRequest(link)
 
     if not subtitlePageContent then msg.error("Page not found!") return end
 
@@ -208,7 +208,7 @@ function site:download(link, savePath)
 
     if not (form.idid and form.altid and form.sidid) then msg.error("Missing form value!") return end
 
-    request:timeout(30):postData(form):download(savePath):sendRequest(self.url.site.."/ind")
+    request:timeout(15):postData(form):download(savePath):sendRequest(self.url.site.."/ind")
 end
 
 return site

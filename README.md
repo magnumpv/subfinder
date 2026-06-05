@@ -24,7 +24,7 @@ Ctrl+F script-binding subfinder_pastelink
 1. Install the plugin.
 
 ```
-##### Manual
+### Manual
 
 Place scripts and script-opts folders into your config directory.
 
@@ -33,7 +33,7 @@ Place scripts and script-opts folders into your config directory.
 | Windows   | %appdata%/mpv/ |
 | GNU/Linux | ~/.config/mpv/ |
 
-##### Automatic
+### Automatic
 
 To install or update via command line:
 
@@ -46,12 +46,20 @@ powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/mag
 curl -fsSL https://raw.githubusercontent.com/magnum357i/mpv-subfinder/HEAD/installers/linux.sh | sh
 
 ##### 7-Zip (Windows Only)
+
+### Manual
+
 1. Install 7-Zip.
 2. Add the 7-Zip installation directory to your PATH.
 
 Typical locations:
 - C:\Program Files\7-Zip
 - C:\Program Files (x86)\7-Zip
+
+### Automatic
+
+winget install 7zip.7zip
+
 ```
 
 2. Set up the API keys.
@@ -123,6 +131,9 @@ video_types=mkv,mp4,avi,ts,m2ts,ogm
 subtitle_types=srt,ass,ssa,vtt,sub,sup,pgs
 archive_types=zip,rar,7z
 
+# I don't want AI translations.
+block_ai=no
+
 # API KEYS
 api_subsource=
 api_subdl=
@@ -168,3 +179,4 @@ Zootopia (2016) 1080P DSNP WEB-DL DDP5.1 Atmos H264.en.srt
 # 🔥Important Notes
 - To ensure accurate subtitle matching, the video directory should only contain episodes from the same series.
 - The year is treated as a tag even if it’s not in tag form (e.g., "avatar 2026") and is used when searching on added sites and **TMDB**. For more accurate results, try searching with the year.
+- If you use **the s tag (season filter)**, it will search for series. Otherwise, it will search for movies.

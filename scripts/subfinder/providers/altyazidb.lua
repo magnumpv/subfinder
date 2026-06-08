@@ -29,8 +29,6 @@ function site:getPage(queryParams)
 
     --imdb id search
 
-    --[[
-
     if queryParams.imdbId then
 
         content = request:timeout(10):headers({["X-API-Key"] = config.api_altyazidb}):sendRequest(self.url.api.."/search", {
@@ -42,8 +40,6 @@ function site:getPage(queryParams)
             page    = queryParams.page
         })
     end
-
-    ]]
 
     --title search
 

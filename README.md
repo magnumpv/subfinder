@@ -93,29 +93,29 @@ Controllers are disabled when the interface is opened in these themes:
 
 # 🎉Sources
 
-| Source                | Subtitle Languages  | Requires API Key | Paste Link | Open Page |
-|-----------------------|---------------------|------------------|------------|-----------|
-| **subsource**         | all                 | ✔️               | ✔️        | ✔️       |
-| **subdl**             | all                 | ✔️               | ❌        | ✔️       |
-| **altyazidb**         | turkish, english    | ✔️               | ❌        | ❌       |
-| **turkcealtyazi**     | turkish, english    | ❌               | ✔️        | ✔️       |
+| Source                | Subtitle Languages  | Requires API Key             | Paste Link | Open Page |
+|-----------------------|---------------------|------------------------------|------------|-----------|
+| **altyazidb**         | turkish, english    | ✔️                           | ❌        | ❌       |
+| **opensubtitles**     | all                 | to increase your usage quota | ❌        | ✔️       |
+| **subdl**             | all                 | ✔️                           | ❌        | ✔️       |
+| **subsource**         | all                 | ✔️                           | ✔️        | ✔️       |
+| **turkcealtyazi**     | turkish, english    | ❌                           | ✔️        | ✔️       |
 
 I don't plan to add every subtitle site, but I can add these sites if anyone requests them:
-- opensubtitles
 - addic7ed
 - tvsubtitles
 
 > [!WARNING]
-> Access to turkcealtyazi from outside Turkey is protected by Cloudflare.
+> Access to **turkcealtyazi** from outside Turkey is protected by **Cloudflare**.
 
 > [!NOTE]
-> I was planning to add OpenSubtitles, but its daily limit, even when logged in, is absurdly low.
+> Please note that **OpenSubtitles** allows 20 downloads for authenticated accounts and 5 downloads for anonymous users.
 
 # ⚙️Configuration
 
 ```ini
-# Sites to enable (available values: subsource,subdl,altyazidb,turkcealtyazi)
-sites_to_search=subsource,subdl
+# Sites to enable (available values: subsource,subdl,altyazidb,turkcealtyazi,opensubtitles)
+sites_to_search=subsource
 
 # Default search language on launch
 preferred_language=en
@@ -127,19 +127,23 @@ smart_sorting=yes
 useragent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36
 
 # File Types
-video_types=mkv,mp4,avi,ts,m2ts,ogm
-subtitle_types=srt,ass,ssa,vtt,sub,sup,pgs
+video_types=mkv,mp4,avi,ts,m2ts,ogm,wmv
+subtitle_types=srt,ass,ssa,vtt,sub,sup,pgs,smi,idx
 archive_types=zip,rar,7z
 
 # I don't want AI translations.
 block_ai=no
 
-# API KEYS
+# SECRETS
+# Credentials format is username:password
+
 api_subsource=
 api_subdl=
 api_altyazidb=
+credentials_opensubtitles=
 
 # GUI
+
 text_size=24
 sub_text_size=16
 box_alpha=70

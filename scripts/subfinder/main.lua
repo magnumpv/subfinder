@@ -2,7 +2,7 @@
 
 ╔════════════════════════════════╗
 ║          MPV subfinder         ║
-║              v1.0.7            ║
+║              v1.0.8            ║
 ╚════════════════════════════════╝
 
 https://github.com/magnum357i/mpv-subfinder
@@ -21,35 +21,36 @@ local request  = require "lib/base"
 local msg      = require "mp.msg"
 config         = {
 
-    sites_to_search    = "", --subsource,subdl,altyazidb,turkcealtyazi
-    preferred_language = "en",
-    smart_sorting      = false,
-    useragent          = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
-    video_types        = "mkv,mp4,avi,ts,m2ts,ogm",
-    subtitle_types     = "srt,ass,ssa,vtt,sub,sup,pgs",
-    archive_types      = "zip,rar,7z",
-    block_ai           = false,
+    sites_to_search           = "", --subsource,subdl,altyazidb,turkcealtyazi,opensubtitles
+    preferred_language        = "en",
+    smart_sorting             = false,
+    useragent                 = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    video_types               = "mkv,mp4,avi,ts,m2ts,ogm,wmv",
+    subtitle_types            = "srt,ass,ssa,vtt,sub,sup,pgs,smi,idx",
+    archive_types             = "zip,rar,7z",
+    block_ai                  = false,
 
-    --API KEYS
-    api_subsource      = "",
-    api_subdl          = "",
-    api_altyazidb      = "",
+    --SECRETS
+    api_subsource             = "",
+    api_subdl                 = "",
+    api_altyazidb             = "",
+    credentials_opensubtitles = "", --username:password
 
     --GUI
-    text_size          = 24,
-    sub_text_size      = 16,
-    box_alpha          = 70, -- 0-255
-    box_color          = "000000",
-    cursor_color       = "white", -- white,black
-    padding            = 10,
-    round              = 8,
-    pin_right_margin   = 35,
-    icon_right_margin  = 25,
-    date_format        = "<mm>-<dd>-<yyyy>",
-    bar_width          = 4,
-    column_width       = 15,
-    tag_padding        = 4,
-    tag_right_margin   = 8
+    text_size                 = 24,
+    sub_text_size             = 16,
+    box_alpha                 = 70, -- 0-255
+    box_color                 = "000000",
+    cursor_color              = "white", -- white,black
+    padding                   = 10,
+    round                     = 8,
+    pin_right_margin          = 35,
+    icon_right_margin         = 25,
+    date_format               = "<mm>-<dd>-<yyyy>",
+    bar_width                 = 4,
+    column_width              = 15,
+    tag_padding               = 4,
+    tag_right_margin          = 8
 }
 
 options.read_options(config, "subfinder")
@@ -70,11 +71,21 @@ local cachedPaths     = {}
 local firstOpened     = true
 local query           = {}
 
+app = {
+
+    name              = "mpvsubfinder",
+    version           = "1.0.8",
+    api_tmdb          = "108862d1305e0848f2a0874ca1bf5098",
+    api_opensubtitles = "R3vsYHv28E3JIL288Fv3YSoqmablRACD"
+}
+
 colors = {
 
     text         = "FFFFFF",
     subtext      = "959595",
     hover        = "000000",
+    bestmatch    = "11C823",
+    ai           = "1718FF",
 
     --quality
     bd           = "1F85CC",
@@ -98,7 +109,8 @@ colors = {
     bilingual    = "DA50B2",
     canada       = "DA50B2",
     france       = "DA50B2",
-    brazilian    = "DA50B2"
+    brazilian    = "DA50B2",
+    south        = "DA50B2"
 }
 
 icons = {
@@ -384,6 +396,13 @@ local function render()
             local faded   = false
             --local faded   = (search.results[k].installed and not selected) and true or false
 
+            --ai
+
+            if search.results[k].ai then
+
+                panel:properties({x = data.x, y = lineY, color = colors.ai, alpha = 200}):shape(data.boxWidth, data.lineHeight, 0)
+            end
+
             --selected or stripped
 
             if selected then
@@ -555,9 +574,7 @@ local function startDownload(link, provider)
 
     local archiveFiles = h.listFiles(getPath("cache/subtitles"), config.archive_types)
 
-    if not (archiveFiles and archiveFiles[1]) then mp.osd_message("Zip file not found.", 3) return end
-
-    h.unpackArchive(path.join({getPath("cache/subtitles"), archiveFiles[1]}), getPath("cache/subtitles"))
+    if archiveFiles then h.unpackArchive(path.join({getPath("cache/subtitles"), archiveFiles[1]}), getPath("cache/subtitles")) end
 
     local subFiles = h.listFiles(getPath("cache/subtitles"), "ass,srt")
 
@@ -886,15 +903,27 @@ local function toggle()
                 mp.osd_message("Please select at least one provider", 5) return
             end
 
-            --APIs check
+            --secrets check
 
             for _, p in pairs(h.splitString(config.sites_to_search)) do
 
-                if providers[p].url and providers[p].url.api and config["api_"..p]:gsub("%s", "") == "" then
+                if config["api_"..p] and config["api_"..p]:gsub("%s", "") == "" then
 
-                    mp.osd_message(string.format("An API key is required for %s", p), 5) return
+                    mp.osd_message(string.format("API key required for %s", p), 5) return
                 end
             end
+
+            --[[
+
+            for _, p in pairs(h.splitString(config.sites_to_search)) do
+
+                if config["credentials_"..p] and not config["credentials_"..p]:find("[^:]+:[^:]+") then
+
+                    mp.osd_message(string.format("Username and password required for %s", p), 5) return
+                end
+            end
+
+            ]]
 
             --dependencies check
 

@@ -161,7 +161,7 @@ function subtitle:newLine(t)
         end
     end
 
-    local p = self:properties(info.title)
+    local p = (info.title and info.title ~= "") and self:properties(info.title) or {}
 
     for k, v in pairs(p) do info[k] = info[k] or v end
 

@@ -86,6 +86,7 @@ end
 
 function gui:text(str)
 
+    str          = str or "unknown"
     local result = ""
 
     result = result.."\\an"..(self.p.align or 7)

@@ -50,7 +50,7 @@ function site:getPage(queryParams)
 
             searchType = "imdb",
             imdb       = queryParams.imdbId,
-            season     = (queryParams.tags and queryParams.tags.s) and queryParams.tags.s or nil
+            season     = queryParams.tags.s
         })
     end
 
@@ -63,7 +63,7 @@ function site:getPage(queryParams)
             searchType = "text",
             q          = queryParams.title,
             year       = queryParams.year,
-            season     = (queryParams.tags and queryParams.tags.s) and queryParams.tags.s or nil,
+            season     = queryParams.tags.s,
             type       = isSeries and "series" or "movie"
         })
 
@@ -170,7 +170,7 @@ end
 
 function site:filter(t, queryParams, isSeries)
 
-    if isSeries and queryParams.tags and queryParams.tags.e and t.releaseInfo and t.releaseInfo[1] then
+    if isSeries and queryParams.tags.e and t.releaseInfo and t.releaseInfo[1] then
 
         local episodeNumbers = subtitle:getEpisodeRange(t.releaseInfo[1])
 

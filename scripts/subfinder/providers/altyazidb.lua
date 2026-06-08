@@ -29,11 +29,30 @@ function site:getPage(queryParams)
 
     --imdb id search
 
+    --[[
+
     if queryParams.imdbId then
 
         content = request:timeout(10):headers({["X-API-Key"] = config.api_altyazidb}):sendRequest(self.url.api.."/search", {
 
             imdb_id = queryParams.imdbId,
+            lang    = queryParams.tags.language,
+            season  = queryParams.tags.s,
+            episode = queryParams.tags.e,
+            page    = queryParams.page
+        })
+    end
+
+    ]]
+
+    --title search
+
+    if not (content and content.data and content.data[1]) then
+
+        content = request:timeout(10):headers({["X-API-Key"] = config.api_altyazidb}):sendRequest(self.url.api.."/search", {
+
+            title   = queryParams.title,
+            year    = queryParams.year,
             lang    = queryParams.tags.language,
             season  = queryParams.tags.s,
             episode = queryParams.tags.e,

@@ -35,6 +35,13 @@ function this:stripTags(str)
     return str:gsub("<[^>]*>", ""):gsub("%s(.-)%s", "%1"):gsub("\t", "")
 end
 
+function this:userAgent(val)
+
+    self.data.userAgent = tostring(val)
+
+    return self
+end
+
 function this:timeout(val)
 
     self.data.timeout = tostring(val)
@@ -72,7 +79,7 @@ function this:sendRequest(link, params)
     table.insert(args, "-L")
     table.insert(args, "-s")
     table.insert(args, "-A")
-    table.insert(args, config.useragent)
+    table.insert(args, self.data.userAgent or config.useragent)
 
     if self.data.timeout then
 
@@ -135,21 +142,7 @@ end
 
 function this:reset()
 
-    for k, v in pairs(self.data) do
-
-        if type(v) == "table" then
-
-            for kk in pairs(v) do
-
-                self.data[k][kk] = nil
-            end
-
-            self.data[k] = nil
-        else
-
-            self.data[k] = nil
-        end
-    end
+    h.clearTable(self.data)
 end
 
 --[[

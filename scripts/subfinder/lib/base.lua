@@ -3,10 +3,8 @@ local path    = require "lib/path"
 local utils   = require "mp.utils"
 local request = require "lib/request"
 local msg     = require "mp.msg"
-local this    = {name = "unknown", url = "", languageBindings = {}, languageTags = {}}
+local this    = {name = "unknown", url = "", languageMap = {}, regionMap = {}}
 this.__index  = this
-
-local tmdpApiKey = "108862d1305e0848f2a0874ca1bf5098"
 
 function this:new(conf)
 
@@ -38,7 +36,7 @@ function this:findImdbId(queryParams)
     local isSeries = this:isSeries(queryParams)
     local content
 
-    content = request:timeout(10):sendRequest("https://api.themoviedb.org/3/search/"..(isSeries and "tv" or "movie"), {api_key = tmdpApiKey, query = queryParams.title, primary_release_year = queryParams.year})
+    content = request:timeout(10):sendRequest("https://api.themoviedb.org/3/search/"..(isSeries and "tv" or "movie"), {api_key = app.api_tmdb, query = queryParams.title, primary_release_year = queryParams.year})
 
     if not (content and content.results and content.results[1]) then msg.warn("[findimdbid] TMDB page not found.") return nil end
 
@@ -59,7 +57,7 @@ function this:findImdbId(queryParams)
         end
     end
 
-    content = request:timeout(10):sendRequest(string.format("https://api.themoviedb.org/3/%s/%s", (isSeries and "tv" or "movie"), content.results[k].id), {api_key = tmdpApiKey, append_to_response = "external_ids"})
+    content = request:timeout(10):sendRequest(string.format("https://api.themoviedb.org/3/%s/%s", (isSeries and "tv" or "movie"), content.results[k].id), {api_key = app.api_tmdb, append_to_response = "external_ids"})
 
     if not (content and content.external_ids and content.external_ids.imdb_id) then msg.warn("[findimdbid] TMDB page does not contain an IMDb ID.") return nil end
 

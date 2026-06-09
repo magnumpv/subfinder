@@ -110,7 +110,7 @@ end
 
 function this:isSameVersion(releases)
 
-    if not (releases or titleProperties.version) then return nil end
+    if not (releases and titleProperties.version) then return nil end
 
     if type(releases) == "table" then
 

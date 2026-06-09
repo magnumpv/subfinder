@@ -64,7 +64,7 @@ local currentIndex    = 1
 local message         = ""
 local panel           = gui:new()
 local providers       = {}
-local currentLanguage = "xx"
+local currentLanguage = ""
 local search          = {timer = nil, text = "", results = {}, processing = false}
 local cachedPaths     = {}
 local firstOpened     = true
@@ -556,6 +556,7 @@ local function reset()
     h.clearTable(cachedPaths)
     h.clearTable(query)
 
+    currentLanguage  = ""
     search.text      = ""
     mouse.x, mouse.y = 0, 0
 end

@@ -79,8 +79,6 @@ function site:parse(content, queryParams)
 
         if passed then
 
-            h.log2(row)
-
             table.insert(rows, subtitle:newLine({
 
                 id           = row.id,

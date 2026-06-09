@@ -13,7 +13,7 @@ Ctrl+f script-binding subfinder
 Ctrl+F script-binding subfinder_pastelink
 ```
 
-# 🧲Dependencies
+# 🧲Requirements
 
 - **7-Zip**
 - **cURL**

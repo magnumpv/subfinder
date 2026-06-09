@@ -107,7 +107,7 @@ function site:parse(content, queryParams)
                 region       = self:getRegion(row.language),
                 forced       = self:isForced(h.joinStrings(row.comment, row.release_name)),
                 hi           = row.hi or self:isHi(h.joinStrings(row.comment, row.release_name)),
-                releases     = row.releases
+                sameversion  = self:isSameVersion(row.releases)
             }))
         end
     end

@@ -82,11 +82,11 @@ end
 
 function this:isForced(str)
 
-      if not str then return nil end
+    if not str then return nil end
 
     str = str:lower()
 
-    return str:find("forced")
+    return str:find("forced") and true or nil
 end
 
 function this:isHi(str)
@@ -106,6 +106,24 @@ function this:isHi(str)
     end
 
     return false
+end
+
+function this:isSameVersion(releases)
+
+    if not (releases or titleProperties.version) then return nil end
+
+    if type(releases) == "table" then
+
+        for _, release in ipairs(releases) do
+
+            if type(release) == "string" and string.find(release:lower(), titleProperties.version) then return true end
+        end
+    elseif string.find(releases:lower(), titleProperties.version) then
+
+        return true
+    end
+
+    return nil
 end
 
 function this:isSeries(queryParams)

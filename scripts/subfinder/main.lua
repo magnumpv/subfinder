@@ -2,7 +2,7 @@
 
 ╔════════════════════════════════╗
 ║          MPV subfinder         ║
-║              v1.0.8            ║
+║              v1.0.9            ║
 ╚════════════════════════════════╝
 
 https://github.com/magnum357i/mpv-subfinder
@@ -62,7 +62,6 @@ local mouse           = {x = 0, y = 0}
 local offset          = 1
 local currentIndex    = 1
 local message         = ""
-local titleProperties = {}
 local panel           = gui:new()
 local providers       = {}
 local currentLanguage = "xx"
@@ -71,10 +70,12 @@ local cachedPaths     = {}
 local firstOpened     = true
 local query           = {}
 
+titleProperties = {}
+
 app = {
 
     name              = "mpvsubfinder",
-    version           = "1.0.8",
+    version           = "1.0.9",
     api_tmdb          = "108862d1305e0848f2a0874ca1bf5098",
     api_opensubtitles = "R3vsYHv28E3JIL288Fv3YSoqmablRACD"
 }
@@ -84,7 +85,7 @@ colors = {
     text         = "FFFFFF",
     subtext      = "959595",
     hover        = "000000",
-    bestmatch    = "11C823",
+    sameversion  = "11C823",
     ai           = "1718FF",
 
     --quality
@@ -396,9 +397,12 @@ local function render()
             local faded   = false
             --local faded   = (search.results[k].installed and not selected) and true or false
 
-            --ai
+            --ai or sameversion
 
-            if search.results[k].ai then
+            if search.results[k].sameversion then
+
+                panel:properties({x = data.x, y = lineY, color = colors.sameversion, alpha = 200}):shape(data.boxWidth, data.lineHeight, 0)
+            elseif search.results[k].ai then
 
                 panel:properties({x = data.x, y = lineY, color = colors.ai, alpha = 200}):shape(data.boxWidth, data.lineHeight, 0)
             end

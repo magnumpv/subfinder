@@ -79,6 +79,8 @@ function site:parse(content, queryParams)
 
         if passed then
 
+            h.log2(row)
+
             table.insert(rows, subtitle:newLine({
 
                 id           = row.id,
@@ -89,7 +91,7 @@ function site:parse(content, queryParams)
                 forced       = row.forced and row.forced == 1,
                 foreign      = row.foreign_parts and row.foreign_parts == 1,
                 hi           = row.hearing_impaired and row.hearing_impaired == 1,
-                releases     = row.translator_note
+                sameversion  = self:isSameVersion(row.releases)
             }))
         end
     end

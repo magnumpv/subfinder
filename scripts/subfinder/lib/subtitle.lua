@@ -6,11 +6,20 @@ local subtitle = {
     rangeSeparator = "%-%~"
 }
 
-function subtitle:getEpisodeNumber(title)
+function subtitle:prepareTitle(title)
 
     title = title:lower()
-    title = title:gsub("%d+p", "")
-    title = title:gsub("%d%d%d%dx%d+", "")
+    title = title:gsub("%d%d%d%dx%d+", "") --1920x1080, 1280x720
+    title = title:gsub("%d%d%d%d["..self.spaces.."]x["..self.spaces.."]%d+", "") --1920 x 1080, 1280 x 720
+    title = title:gsub("%d%d%d+p", "") --720p, 1080p
+    title = title:gsub("["..self.spaces.."]x%d%d%d", "") --x264, x265
+
+    return title
+end
+
+function subtitle:getEpisodeNumber(title)
+
+    title = self:prepareTitle(title)
     title = title:gsub("19%d%d", ""):gsub("20%d%d", "")
     title = title:gsub("season %d+", "")
 
@@ -44,10 +53,7 @@ end
 
 function subtitle:getSeasonNumber(title)
 
-    title = title:lower()
-    title = title:gsub("%d+p", "")
-    title = title:gsub("%d%d%d%dx%d+", "")
-    title = title:gsub("19%d%d", ""):gsub("20%d%d", "")
+    title = self:prepareTitle(title)
 
     return
        string.match(title, "["..self.spaces.."]s0*(%d+)")
@@ -66,7 +72,7 @@ function subtitle:properties(title)
         apple   = "atvp,atv,it"
     }
     local t = {}
-    title   = title:lower()
+    title   = self:prepareTitle(title)
 
     --quality
 
@@ -97,7 +103,7 @@ function subtitle:properties(title)
 
     --version
 
-    t.version = string.match(title, "%-([a-zA-Z0-9]-)$") or string.match(title, "^%[([^%]]-)%]") or string.match(title, "%[([^%]]-)%]$")
+    t.version = string.match(title, "%-([a-z0-9]-)$") or string.match(title, "^%[([^%]]-)%]") or string.match(title, "%[([^%]]-)%]$")
 
     if t.version and (tonumber(t.version) or string.len(t.version) > 25) then t.version = nil end
 

@@ -131,8 +131,9 @@ function site:parse(content, queryParams)
                 region       = self:getRegion(row.language),
                 forced       = self:isForced(h.joinStrings(row.commentary, (row.releaseInfo and row.releaseInfo[1]) and table.concat(row.releaseInfo, " ") or nil)),
                 quality      = qualityMap[row.releaseType],
-                releases     = row.releaseInfo,
-                date         = (row.createdAt) and dateConverter(row.createdAt) or nil
+                sameversion  = self:isSameVersion(row.releaseInfo),
+                date         = (row.createdAt) and dateConverter(row.createdAt) or nil,
+                ai           = row.productionType and row.productionType == "machine"
             }))
         end
     end

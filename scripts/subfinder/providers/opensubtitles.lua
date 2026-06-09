@@ -30,10 +30,13 @@ local site     = base:new({
         ["ze"]    = "bilingual",
         ["ea"]    = "latinamerica",
         ["sp"]    = "spain"
-    }
+    },
+    hash = nil
 })
 
 function site:getPage(queryParams)
+
+    self.hash = self:moviehash()
 
     local content
     local language = self:extendLanguage(queryParams.tags.language)
@@ -52,7 +55,8 @@ function site:getPage(queryParams)
             languages       = language,
             ai_translated   = config.block_ai and "exclude" or nil,
             order_by        = "upload_date",
-            order_direction = "desc"
+            order_direction = "desc",
+            moviehash       = self.hash
         })
     end
 
@@ -70,7 +74,8 @@ function site:getPage(queryParams)
             languages       = language,
             ai_translated   = config.block_ai and "exclude" or nil,
             order_by        = "upload_date",
-            order_direction = "desc"
+            order_direction = "desc",
+            moviehash       = self.hash
         })
     end
 
@@ -106,7 +111,8 @@ function site:parse(content, queryParams)
                 forced       = row.attributes.foreign_parts_only,
                 region       = self:getRegion(row.attributes.language),
                 ai           = row.attributes.machine_translated or row.attributes.ai_translated,
-                date         = (row.attributes.upload_date) and dateConverter(row.attributes.upload_date) or nil
+                date         = (row.attributes.upload_date) and dateConverter(row.attributes.upload_date) or nil,
+                sameversion  = row.attributes.moviehash_match or self:isSameVersion(row.attributes.release)
             }))
         end
     end
@@ -207,6 +213,76 @@ end
 function site:password()
 
     return config.credentials_opensubtitles:match("[^:]+:([^:]+)")
+end
+
+--https://github.com/opensubtitles/vlsub-opensubtitles-com/blob/main/vlsubcom.lua
+function site:moviehash()
+
+    local size
+    local dataStart = ""
+    local dataEnd   = ""
+    local chunkSize = 65536
+    local file      = io.open(mp.get_property("path"), "rb")
+
+    if not file then return nil end
+
+    size      = chunkSize
+    dataStart = file:read(chunkSize)
+
+    if not dataStart then file:close() return nil end
+
+    size = file:seek("end", -chunkSize)
+
+    if not size then file:close() return nil end
+
+    size    = size + chunkSize
+    dataEnd = file:read(chunkSize)
+
+    if not dataEnd then file:close() return nil end
+
+    file:close()
+
+    if not dataStart or not dataEnd or #dataStart == 0 or #dataEnd == 0 then return nil end
+
+    local overflow
+    local o , a, b, c, d, e, f, g, h
+    local lo       = size
+    local hi       = 0
+    local hashData = dataStart..dataEnd
+    local maxSize  = 4294967296
+
+    for i = 1, #hashData, 8 do
+
+        a, b, c, d, e, f, g, h = hashData:byte(i, i + 7)
+
+        if not a then break end
+
+        b = b or 0
+        c = c or 0
+        d = d or 0
+        e = e or 0
+        f = f or 0
+        g = g or 0
+        h = h or 0
+
+        lo = lo + a + b * 256 + c * 65536 + d * 16777216
+        hi = hi + e + f * 256 + g * 65536 + h * 16777216
+
+        if lo > maxSize then
+
+            overflow = math.floor(lo / maxSize)
+            lo       = lo - (overflow * maxSize)
+            hi       = hi + overflow
+        end
+
+        if hi > maxSize then
+
+            overflow = math.floor(hi / maxSize)
+            hi       = hi - (overflow * maxSize)
+        end
+    end
+
+    return string.format("%08x%08x", hi, lo)
 end
 
 return site

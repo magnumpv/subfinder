@@ -153,7 +153,8 @@ function site:parse(content, queryParams)
             quality      = qualityMap[row:match('<div class="ripdiv">%s*<span class="([^"]-)">')] or qualityMap[row:match('<div class="alcevirmen">%s*<span class="([^"]-)">')],
             hi           = row:match("/images/isitme.png") and true or false,
             season       = getSeason(request:stripTags(row:match('<div class="alcd">(.-)</div>'))),
-            episode      = getEpisode(request:stripTags(row:match('<div class="alcd">(.-)</div>')))
+            episode      = getEpisode(request:stripTags(row:match('<div class="alcd">(.-)</div>'))),
+            sameversion  = self:isSameVersion(request:stripTags(row:match('<div class="ripdiv">(.-)</div>')))
         })
     end
 

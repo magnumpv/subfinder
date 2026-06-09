@@ -34,24 +34,24 @@ local site     = base:new({
     hash = nil
 })
 
-function site:getPage(queryParams)
+function site:getPage()
 
     self.hash = self:moviehash()
 
     local content
-    local language = self:extendLanguage(queryParams.tags.language)
-    local isSeries = self:isSeries(queryParams)
+    local language = self:extendLanguage(query.tags.language)
+    local isSeries = self:isSeries()
 
     --imdb id search
 
-    if queryParams.imdbId then
+    if query.imdbId then
 
         content = request:timeout(10):userAgent(string.format("%s v%s", app.name, app.version)):headers({["Api-Key"] = app.api_opensubtitles, ["Accept"] = "application/json"}):sendRequest(self.url.api.."/subtitles", {
 
-            season_number   = queryParams.tags.s,
-            episode_number  = queryParams.tags.e,
-            imdb_id         = isSeries and nil or queryParams.imdbId:gsub("tt0*", ""),
-            parent_imdb_id  = isSeries and queryParams.imdbId:gsub("tt0*", "") or nil,
+            season_number   = query.tags.s,
+            episode_number  = query.tags.e,
+            imdb_id         = isSeries and nil or query.imdbId:gsub("tt0*", ""),
+            parent_imdb_id  = isSeries and query.imdbId:gsub("tt0*", "") or nil,
             languages       = language,
             ai_translated   = config.block_ai and "exclude" or nil,
             order_by        = "upload_date",
@@ -66,11 +66,11 @@ function site:getPage(queryParams)
 
         content = request:timeout(10):userAgent(string.format("%s v%s", app.name, app.version)):headers({["Api-Key"] = app.api_opensubtitles, ["Accept"] = "application/json"}):sendRequest(self.url.api.."/subtitles", {
 
-            query           = queryParams.title:lower(),
+            query           = query.title:lower(),
             type            = isSeries and "episode" or "movie",
-            season_number   = queryParams.tags.s,
-            episode_number  = queryParams.tags.e,
-            year            = queryParams.year,
+            season_number   = query.tags.s,
+            episode_number  = query.tags.e,
+            year            = query.year,
             languages       = language,
             ai_translated   = config.block_ai and "exclude" or nil,
             order_by        = "upload_date",
@@ -84,9 +84,9 @@ function site:getPage(queryParams)
     return content.data
 end
 
-function site:parse(content, queryParams)
+function site:parse(content)
 
-    local isSeries      = self:isSeries(queryParams)
+    local isSeries      = self:isSeries()
     local rows          = {}
     local dateConverter = function(raw)
 

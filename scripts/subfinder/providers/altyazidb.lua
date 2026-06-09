@@ -15,7 +15,7 @@ local site     = base:new({
     limit = 100
 })
 
-function site:getPage(queryParams)
+function site:getPage()
 
     local languageMap = {
 
@@ -23,21 +23,21 @@ function site:getPage(queryParams)
         en = true
     }
 
-    if not languageMap[queryParams.tags.language] then return nil end
+    if not languageMap[query.tags.language] then return nil end
 
     local content
 
     --imdb id search
 
-    if queryParams.imdbId then
+    if query.imdbId then
 
         content = request:timeout(10):headers({["X-API-Key"] = config.api_altyazidb}):sendRequest(self.url.api.."/search", {
 
-            imdb_id = queryParams.imdbId,
-            lang    = queryParams.tags.language,
-            season  = queryParams.tags.s,
-            episode = queryParams.tags.e,
-            page    = queryParams.page
+            imdb_id = query.imdbId,
+            lang    = query.tags.language,
+            season  = query.tags.s,
+            episode = query.tags.e,
+            page    = query.page
         })
     end
 
@@ -47,12 +47,12 @@ function site:getPage(queryParams)
 
         content = request:timeout(10):headers({["X-API-Key"] = config.api_altyazidb}):sendRequest(self.url.api.."/search", {
 
-            title   = queryParams.title,
-            year    = queryParams.year,
-            lang    = queryParams.tags.language,
-            season  = queryParams.tags.s,
-            episode = queryParams.tags.e,
-            page    = queryParams.page
+            title   = query.title,
+            year    = query.year,
+            lang    = query.tags.language,
+            season  = query.tags.s,
+            episode = query.tags.e,
+            page    = query.page
         })
     end
 
@@ -61,7 +61,7 @@ function site:getPage(queryParams)
     return content.data
 end
 
-function site:parse(content, queryParams)
+function site:parse(content)
 
     local rows = {}
 
@@ -83,6 +83,7 @@ function site:parse(content, queryParams)
 
                 id           = row.id,
                 title        = (row.releases and row.releases[1]) and row.releases[1] or row.translator,
+                pageLink     = query.imdbId and string.format("/onizleme.php?type=imdb&id=%s", query.imdbId) or nil,
                 downloadLink = row.download_url and row.download_url:gsub(".+(/download)", "%1") or nil,
                 uploader     = row.uploader,
                 downloads    = row.downloads,

@@ -3,7 +3,7 @@ local path    = require "lib/path"
 local utils   = require "mp.utils"
 local request = require "lib/request"
 local msg     = require "mp.msg"
-local this    = {name = "unknown", url = "", languageMap = {}, regionMap = {}}
+local this    = {name = "unknown", url = "", languageMap = {}, regionMap = {}, sameVersionAllKeyword = nil}
 this.__index  = this
 
 function this:new(conf)
@@ -13,9 +13,9 @@ function this:new(conf)
     return conf
 end
 
-function this:findSubtitles(queryParams)
+function this:findSubtitles()
 
-    local content = self:getPage(queryParams)
+    local content = self:getPage()
 
     if not content then
 
@@ -24,19 +24,19 @@ function this:findSubtitles(queryParams)
         return nil
     end
 
-    local result = self:parse(content, queryParams)
+    local result = self:parse(content)
 
     msg.info(string.format("[%s] Found %s subtitle(s)", self.name, #result))
 
     return result
 end
 
-function this:findImdbId(queryParams)
+function this:findImdbId()
 
-    local isSeries = this:isSeries(queryParams)
+    local isSeries = this:isSeries()
     local content
 
-    content = request:timeout(10):sendRequest("https://api.themoviedb.org/3/search/"..(isSeries and "tv" or "movie"), {api_key = app.api_tmdb, query = queryParams.title, primary_release_year = queryParams.year})
+    content = request:timeout(10):sendRequest("https://api.themoviedb.org/3/search/"..(isSeries and "tv" or "movie"), {api_key = app.api_tmdb, query = query.title, primary_release_year = query.year})
 
     if not (content and content.results and content.results[1]) then msg.warn("[findimdbid] TMDB page not found.") return nil end
 
@@ -45,9 +45,9 @@ function this:findImdbId(queryParams)
 
     for i = 1, #content.results do
 
-        if queryParams.year then
+        if query.year then
 
-            if getDateValue(content.results[i]) and getDateValue(content.results[i]):match("%d%d%d%d") == tostring(queryParams.year) then
+            if getDateValue(content.results[i]) and getDateValue(content.results[i]):match("%d%d%d%d") == tostring(query.year) then
 
                 k = i break
             end
@@ -118,17 +118,18 @@ function this:isSameVersion(releases)
 
             if type(release) == "string" and string.find(release:lower(), titleProperties.version) then return true end
         end
-    elseif string.find(releases:lower(), titleProperties.version) then
-
-        return true
     end
+
+    releases = releases:lower()
+
+    if string.find(releases, titleProperties.version) or (self.sameVersionAllKeyword and string.find(releases, self.sameVersionAllKeyword)) then return true end
 
     return nil
 end
 
-function this:isSeries(queryParams)
+function this:isSeries()
 
-    return queryParams.tags and queryParams.tags.s
+    return query.tags and query.tags.s
 end
 
 return this

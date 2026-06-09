@@ -2,24 +2,40 @@
 
 ╔════════════════════════════════╗
 ║          MPV subfinder         ║
-║              v1.0.9            ║
+║              v1.1.0            ║
 ╚════════════════════════════════╝
 
 https://github.com/magnum357i/mpv-subfinder
 
 ]]
 
-local options  = require "mp.options"
-local utils    = require "mp.utils"
-local utf8     = require "lib/fastutf8"
-local input    = require "lib/input"
-local path     = require "lib/path"
-local h        = require "lib/helper"
-local subtitle = require "lib/subtitle"
-local gui      = require "lib/gui"
-local request  = require "lib/base"
-local msg      = require "mp.msg"
-config         = {
+local options         = require "mp.options"
+local utils           = require "mp.utils"
+local utf8            = require "lib/fastutf8"
+local input           = require "lib/input"
+local path            = require "lib/path"
+local h               = require "lib/helper"
+local subtitle        = require "lib/subtitle"
+local gui             = require "lib/gui"
+local request         = require "lib/base"
+local msg             = require "mp.msg"
+local labelText       = "Search for subtitles:"
+local data            = {}
+local opened          = false
+local mouse           = {x = 0, y = 0}
+local offset          = 1
+local currentIndex    = 1
+local message         = ""
+local panel           = gui:new()
+local providers       = {}
+local currentLanguage = ""
+local search          = {timer = nil, text = "", results = {}, processing = false}
+local cachedPaths     = {}
+local firstOpened     = true
+
+query = {}
+
+config = {
 
     sites_to_search           = "", --subsource,subdl,altyazidb,turkcealtyazi,opensubtitles
     preferred_language        = "en",
@@ -53,29 +69,14 @@ config         = {
     tag_right_margin          = 8
 }
 
-options.read_options(config, "subfinder")
-
-local labelText       = "Search for subtitles:"
-local data            = {}
-local opened          = false
-local mouse           = {x = 0, y = 0}
-local offset          = 1
-local currentIndex    = 1
-local message         = ""
-local panel           = gui:new()
-local providers       = {}
-local currentLanguage = ""
-local search          = {timer = nil, text = "", results = {}, processing = false}
-local cachedPaths     = {}
-local firstOpened     = true
-local query           = {}
+options.read_options(config)
 
 titleProperties = {}
 
 app = {
 
     name              = "mpvsubfinder",
-    version           = "1.0.9",
+    version           = "1.1.0",
     api_tmdb          = "108862d1305e0848f2a0874ca1bf5098",
     api_opensubtitles = "R3vsYHv28E3JIL288Fv3YSoqmablRACD"
 }

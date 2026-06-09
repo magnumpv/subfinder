@@ -9,7 +9,8 @@ local site     = base:new({
     url  = {
 
         site = "https://turkcealtyazi.org"
-    }
+    },
+    sameVersionAllKeyword = "genel"
 })
 
 function site:getCategory(content)
@@ -25,7 +26,7 @@ function site:getCategory(content)
     return nil
 end
 
-function site:getPage(queryParams)
+function site:getPage()
 
     local languageMap = {
 
@@ -33,16 +34,16 @@ function site:getPage(queryParams)
         en = true
     }
 
-    if not languageMap[queryParams.tags.language] then return nil end
+    if not languageMap[query.tags.language] then return nil end
 
-    local isSeries = self:isSeries(queryParams)
+    local isSeries = self:isSeries()
     local content
 
     --imdb id search
 
-    if queryParams.imdbId then
+    if query.imdbId then
 
-        content = request:timeout(10):sendRequest(self.url.site.."/find.php", {cat = "sub", find = queryParams.imdbId})
+        content = request:timeout(10):sendRequest(self.url.site.."/find.php", {cat = "sub", find = query.imdbId})
     end
 
     --title search (with year)
@@ -53,8 +54,8 @@ function site:getPage(queryParams)
 
             tur      = "",
             tur2     = "",
-            yil      = queryParams.year,
-            yil2     = queryParams.year,
+            yil      = query.year,
+            yil2     = query.year,
             ulke     = "",
             dil      = "",
             sira     = "3",
@@ -65,7 +66,7 @@ function site:getPage(queryParams)
             taolimit = "0",
             plimit   = "0",
             olimit   = "0",
-            find     = queryParams.title
+            find     = query.title
         })
 
         local firstResult
@@ -82,7 +83,7 @@ function site:getPage(queryParams)
     return content
 end
 
-function site:parse(content, queryParams)
+function site:parse(content)
 
     local qualityMap = {
 
@@ -106,7 +107,7 @@ function site:parse(content, queryParams)
         tr = "flagtr",
         en = "flagen"
     }
-    local isSeries = self:isSeries(queryParams)
+    local isSeries = self:isSeries()
     local rows     = {}
 
     local dateConverter = function(raw)
@@ -140,7 +141,7 @@ function site:parse(content, queryParams)
 
     local findValues = function(row)
 
-        if not row:match('class="'..languageMap[queryParams.tags.language]..'"') then return nil end
+        if not row:match('class="'..languageMap[query.tags.language]..'"') then return nil end
 
         return subtitle:newLine({
 
@@ -160,11 +161,11 @@ function site:parse(content, queryParams)
 
     if isSeries then
 
-        for row in content:gmatch('<div class="altsonsez1[^"]*sezon_'..queryParams.tags.s..'[^"%d]*"[^>]*>(.-<div class="ta%-container">.-</div>%s*</div>)') do
+        for row in content:gmatch('<div class="altsonsez1[^"]*sezon_'..query.tags.s..'[^"%d]*"[^>]*>(.-<div class="ta%-container">.-</div>%s*</div>)') do
 
             local values = findValues(row)
 
-            if values and values.episode and (not queryParams.tags.e or (values.episode.text == "Paket" or queryParams.tags.e >= values.episode.first and queryParams.tags.e <= values.episode.last)) then
+            if values and values.episode and (not query.tags.e or (values.episode.text == "Paket" or query.tags.e >= values.episode.first and query.tags.e <= values.episode.last)) then
 
                 values.title = string.format("(S:%s-B:%s) %s", values.season, values.episode.text, values.title)
 

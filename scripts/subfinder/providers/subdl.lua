@@ -29,27 +29,27 @@ local site     = base:new({
     limit = 30
 })
 
-function site:getPage(queryParams)
+function site:getPage()
 
     local content
-    local language = self:extendLanguage(queryParams.tags.language)
-    local isSeries = self:isSeries(queryParams)
+    local language = self:extendLanguage(query.tags.language)
+    local isSeries = self:isSeries()
 
     --imdb id search
 
-    if queryParams.imdbId then
+    if query.imdbId then
 
         content = request:timeout(10):sendRequest(self.url.api.."/subtitles", {
 
             api_key        = config.api_subdl,
-            imdb_id        = queryParams.imdbId,
+            imdb_id        = query.imdbId,
             languages      = language,
             releases       = 1,
-            season_number  = queryParams.tags.s,
-            episode_number = queryParams.tags.e,
+            season_number  = query.tags.s,
+            episode_number = query.tags.e,
             subs_per_page  = 30,
             comment        = 1,
-            page           = queryParams.tags.page
+            page           = query.tags.page
         })
     end
 
@@ -60,16 +60,16 @@ function site:getPage(queryParams)
         content = request:timeout(10):sendRequest(self.url.api.."/subtitles", {
 
             api_key        = config.api_subdl,
-            film_name      = queryParams.title,
-            year           = queryParams.year,
+            film_name      = query.title,
+            year           = query.year,
             languages      = language,
             releases       = 1,
-            season_number  = queryParams.tags.s,
-            episode_number = queryParams.tags.e,
+            season_number  = query.tags.s,
+            episode_number = query.tags.e,
             subs_per_page  = self.limit,
             comment        = 1,
             type           = isSeries and "tv" or "movie",
-            page           = queryParams.tags.page
+            page           = query.tags.page
         })
     end
 
@@ -78,16 +78,16 @@ function site:getPage(queryParams)
     return content.subtitles
 end
 
-function site:parse(content, queryParams)
+function site:parse(content)
 
-    local isSeries = self:isSeries(queryParams)
+    local isSeries = self:isSeries()
     local rows     = {}
 
     for _, row in ipairs(content) do
 
         local passed = true
 
-        if not self:filter(row, queryParams, isSeries) then
+        if not self:filter(row, isSeries) then
 
             msg.warn(string.format("[%s] Subtitle skipped. Reason: %s", self.name, "episode"))
             h.log(row)
@@ -133,14 +133,14 @@ function site:download(link, savePath)
     request:timeout(15):download(savePath):sendRequest(link, {api_key = config.api_subdl})
 end
 
-function site:filter(t, queryParams, isSeries)
+function site:filter(t, isSeries)
 
-    if isSeries and queryParams.tags and queryParams.tags.e and t.release_name and (t.full_season and t.full_season == false) then
+    if isSeries and query.tags and query.tags.e and t.release_name and (t.full_season and t.full_season == false) then
 
         local episodeNumbers = subtitle:getEpisodeRange(t.release_name)
 
         if not episodeNumbers                                                                          then return true  end
-        if not (queryParams.tags.e >= episodeNumbers.from and queryParams.tags.e <= episodeNumbers.to) then return false end
+        if not (query.tags.e >= episodeNumbers.from and query.tags.e <= episodeNumbers.to) then return false end
     end
 
     return true

@@ -268,10 +268,14 @@ function this.visitTo(link)
 
     if isWindows then
 
-        return this.runCommand({"cmd", "/c", "start", link})
+        link = link:gsub("@", "")
+
+        return this.runCommand({"powershell", "-NoProfile", "-Command", "Start-Process @'\n"..link.."\n'@"})
     else
 
-        return this.runCommand({"xdg-open", link})
+        link = link:gsub("EOF", "")
+
+        return this.runCommand({"sh", "-c", "xdg-open <<'EOF'\n"..link.."\nEOF"})
     end
 end
 

@@ -36,21 +36,21 @@ local site     = base:new({
     limit = 100
 })
 
-function site:getPage(queryParams)
+function site:getPage()
 
     local content
-    local language = self:extendLanguage(languages[queryParams.tags.language])
-    local isSeries = self:isSeries(queryParams)
+    local language = self:extendLanguage(languages[query.tags.language])
+    local isSeries = self:isSeries()
 
     --imdb id search
 
-    if queryParams.imdbId then
+    if query.imdbId then
 
         content = request:timeout(10):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.api.."/movies/search", {
 
             searchType = "imdb",
-            imdb       = queryParams.imdbId,
-            season     = queryParams.tags.s
+            imdb       = query.imdbId,
+            season     = query.tags.s
         })
     end
 
@@ -61,9 +61,9 @@ function site:getPage(queryParams)
         content = request:timeout(10):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.api.."/movies/search", {
 
             searchType = "text",
-            q          = queryParams.title,
-            year       = queryParams.year,
-            season     = queryParams.tags.s,
+            q          = query.title,
+            year       = query.year,
+            season     = query.tags.s,
             type       = isSeries and "series" or "movie"
         })
 
@@ -75,7 +75,7 @@ function site:getPage(queryParams)
         movieId  = content.data[1].movieId,
         language = language,
         limit    = self.limit,
-        page     = queryParams.tags.page
+        page     = query.tags.page
     })
 
     if not (content.data and content.data[1]) then return nil end
@@ -83,9 +83,9 @@ function site:getPage(queryParams)
     return content.data
 end
 
-function site:parse(content, queryParams)
+function site:parse(content)
 
-    local isSeries      = self:isSeries(queryParams)
+    local isSeries      = self:isSeries()
     local qualityMap    = {web = "web", bluray = "bd"}
     local rows          = {}
     local dateConverter = function(raw)
@@ -107,7 +107,7 @@ function site:parse(content, queryParams)
             passed = false
         end
 
-        if passed and not self:filter(row, queryParams, isSeries) then
+        if passed and not self:filter(row, isSeries) then
 
             msg.warn(string.format("[%s] Subtitle skipped. Reason: %s", self.name, "episode"))
             h.log(row)
@@ -169,14 +169,14 @@ function site:getUploaderName(t)
     return nil
 end
 
-function site:filter(t, queryParams, isSeries)
+function site:filter(t, isSeries)
 
-    if isSeries and queryParams.tags.e and t.releaseInfo and t.releaseInfo[1] then
+    if isSeries and query.tags.e and t.releaseInfo and t.releaseInfo[1] then
 
         local episodeNumbers = subtitle:getEpisodeRange(t.releaseInfo[1])
 
         if not episodeNumbers                                                                          then return true  end
-        if not (queryParams.tags.e >= episodeNumbers.from and queryParams.tags.e <= episodeNumbers.to) then return false end
+        if not (query.tags.e >= episodeNumbers.from and query.tags.e <= episodeNumbers.to) then return false end
     end
 
     return true

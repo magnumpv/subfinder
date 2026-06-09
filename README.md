@@ -93,13 +93,13 @@ Controllers are disabled when the interface is opened in these themes:
 
 # 🎉Sources
 
-| Source                | Subtitle Languages  | Requires API Key             | Paste Link | Open Page |
-|-----------------------|---------------------|------------------------------|------------|-----------|
-| **altyazidb**         | turkish, english    | ✔️                           | ❌        | ❌       |
-| **opensubtitles**     | all                 | to increase your usage quota | ❌        | ✔️       |
-| **subdl**             | all                 | ✔️                           | ❌        | ✔️       |
-| **subsource**         | all                 | ✔️                           | ✔️        | ✔️       |
-| **turkcealtyazi**     | turkish, english    | ❌                           | ✔️        | ✔️       |
+| Source                | Subtitle Languages  | Requires API Key             | Paste Link |
+|-----------------------|---------------------|------------------------------|------------|
+| **altyazidb**         | turkish, english    | ✔️                           | ❌        |
+| **opensubtitles**     | all                 | to increase your usage quota | ❌        |
+| **subdl**             | all                 | ✔️                           | ❌        |
+| **subsource**         | all                 | ✔️                           | ✔️        |
+| **turkcealtyazi**     | turkish, english    | ❌                           | ✔️        |
 
 I don't plan to add every subtitle site, but I can add these sites if anyone requests them:
 - addic7ed

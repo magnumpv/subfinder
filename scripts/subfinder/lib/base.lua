@@ -3,7 +3,7 @@ local path    = require "lib/path"
 local utils   = require "mp.utils"
 local request = require "lib/request"
 local msg     = require "mp.msg"
-local this    = {name = "unknown", url = "", languageMap = {}, regionMap = {}, sameVersionAllKeyword = nil}
+local this    = {name = "unknown", url = "", languageMap = {}, regionMap = {}, sameVersionAllKeyword = nil, searchMode = ""}
 this.__index  = this
 
 function this:new(conf)
@@ -28,7 +28,7 @@ function this:findSubtitles()
 
     msg.info(string.format("[%s] Found %s subtitle(s)", self.name, #result))
 
-    return result
+    return result, self.searchMode
 end
 
 function this:findImdbId()
@@ -118,6 +118,8 @@ function this:isSameVersion(releases)
 
             if type(release) == "string" and string.find(release:lower(), titleProperties.version) then return true end
         end
+
+        return nil
     end
 
     releases = releases:lower()

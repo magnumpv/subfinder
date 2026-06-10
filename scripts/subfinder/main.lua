@@ -2,7 +2,7 @@
 
 ╔════════════════════════════════╗
 ║          MPV subfinder         ║
-║              v1.1.0            ║
+║              v1.1.1            ║
 ╚════════════════════════════════╝
 
 https://github.com/magnum357i/mpv-subfinder
@@ -45,6 +45,7 @@ config = {
     subtitle_types            = "srt,ass,ssa,vtt,sub,sup,pgs,smi,idx",
     archive_types             = "zip,rar,7z",
     block_ai                  = false,
+    extract_engine            = "7zip", --7zip, winrar
 
     --SECRETS
     api_subsource             = "",
@@ -76,7 +77,7 @@ titleProperties = {}
 app = {
 
     name              = "mpvsubfinder",
-    version           = "1.1.0",
+    version           = "1.1.1",
     api_tmdb          = "108862d1305e0848f2a0874ca1bf5098",
     api_opensubtitles = "R3vsYHv28E3JIL288Fv3YSoqmablRACD"
 }
@@ -112,7 +113,10 @@ colors = {
     canada       = "DA50B2",
     france       = "DA50B2",
     brazilian    = "DA50B2",
-    south        = "DA50B2"
+    south        = "DA50B2",
+
+    --imdb
+    imdb         = "18C5F5"
 }
 
 icons = {
@@ -515,7 +519,7 @@ local function render()
 
             --site name
 
-            panel:properties({x = posX, y = posY, align = 6, color = selected and colors.hover or colors.text, bold = true}):text(search.results[k].provider)
+            panel:properties({x = posX, y = posY, align = 6, color = search.results[k].searchMode == "imdb" and colors.imdb or (selected and colors.hover or colors.text), bold = true}):text(search.results[k].provider)
 
             lineY = lineY + data.lineHeight
             m     = m + 1
@@ -531,7 +535,6 @@ local function render()
 
             panel:properties({x = barX, y = lineY + barY, color = colors.text, border = 1.3}):shape(config.bar_width, data.barHeight, 0)
         end
-
     end
 
     --hint
@@ -567,6 +570,16 @@ local function showMessage(str)
     message = str or ""
 
     render()
+end
+
+local function loadTitleProperties()
+
+    if not titleProperties.original then
+
+        local filename           = mp.get_property("filename")
+        titleProperties          = subtitle:properties(h.removeExt(filename))
+        titleProperties.original = filename
+    end
 end
 
 local function startDownload(link, provider)
@@ -813,13 +826,14 @@ local function submit()
 
         showMessage(string.format("(%s) Getting subtitles from %s...", steps, p))
 
-        local rows = providers[p]:findSubtitles(query)
+        local rows, searchMode = providers[p]:findSubtitles(query)
 
         if rows then
 
             for k, v in pairs(rows) do
 
-                v.provider = p
+                v.provider   = p
+                v.searchMode = searchMode
 
                 table.insert(search.results, v)
             end
@@ -884,16 +898,6 @@ local function togglePlayerControllers()
     end
 end
 
-local function loadTitleProperties()
-
-    if not titleProperties.original then
-
-        local filename           = mp.get_property("filename")
-        titleProperties          = subtitle:properties(h.removeExt(filename))
-        titleProperties.original = filename
-    end
-end
-
 local function toggle()
 
     togglePlayerControllers()
@@ -933,7 +937,20 @@ local function toggle()
 
             --dependencies check
 
-            local dependencies = {"7z", "curl"}
+            local dependencies = {}
+
+            table.insert(dependencies, "curl")
+
+            if config.extract_engine == "winrar" then
+
+                table.insert(dependencies, "winrar")
+            elseif config.extract_engine == "7zip" then
+
+                table.insert(dependencies, "7z")
+            else
+
+                mp.osd_message(string.format("Unknown extract engine: %s (Use 7zip or winrar)", config.extract_engine), 5) return
+            end
 
             for _, d in pairs(dependencies) do
 

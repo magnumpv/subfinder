@@ -43,12 +43,16 @@ function site:getPage()
 
     if query.imdbId then
 
+        self.searchMode = "imdb"
+
         content = request:timeout(10):sendRequest(self.url.site.."/find.php", {cat = "sub", find = query.imdbId})
     end
 
     --title search (with year)
 
     if not (content and self:getCategory(content)) then
+
+        self.searchMode = "title"
 
         content = request:timeout(10):sendRequest(self.url.site.."/filtre.php", {
 

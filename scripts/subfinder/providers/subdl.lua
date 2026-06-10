@@ -39,6 +39,8 @@ function site:getPage()
 
     if query.imdbId then
 
+        self.searchMode = "imdb"
+
         content = request:timeout(10):sendRequest(self.url.api.."/subtitles", {
 
             api_key        = config.api_subdl,
@@ -56,6 +58,8 @@ function site:getPage()
     --title search (with year)
 
     if not (content and content.subtitles and content.subtitles[1]) then
+
+        self.searchMode = "title"
 
         content = request:timeout(10):sendRequest(self.url.api.."/subtitles", {
 

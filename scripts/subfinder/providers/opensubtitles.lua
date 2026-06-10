@@ -46,6 +46,8 @@ function site:getPage()
 
     if query.imdbId then
 
+        self.searchMode = "imdb"
+
         content = request:timeout(10):userAgent(string.format("%s v%s", app.name, app.version)):headers({["Api-Key"] = app.api_opensubtitles, ["Accept"] = "application/json"}):sendRequest(self.url.api.."/subtitles", {
 
             season_number   = query.tags.s,
@@ -63,6 +65,8 @@ function site:getPage()
     --title search (with year)
 
     if not (content and content.data and content.data[1]) then
+
+        self.searchMode = "title"
 
         content = request:timeout(10):userAgent(string.format("%s v%s", app.name, app.version)):headers({["Api-Key"] = app.api_opensubtitles, ["Accept"] = "application/json"}):sendRequest(self.url.api.."/subtitles", {
 

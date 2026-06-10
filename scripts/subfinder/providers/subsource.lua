@@ -46,6 +46,8 @@ function site:getPage()
 
     if query.imdbId then
 
+        self.searchMode = "imdb"
+
         content = request:timeout(10):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.api.."/movies/search", {
 
             searchType = "imdb",
@@ -57,6 +59,8 @@ function site:getPage()
     --title search (with year)
 
     if not (content and content.data and content.data[1] and content.data[1].movieId) then
+
+        self.searchMode = "title"
 
         content = request:timeout(10):headers({["X-API-Key"] = config.api_subsource}):sendRequest(self.url.api.."/movies/search", {
 

@@ -15,7 +15,7 @@ Ctrl+F script-binding subfinder_pastelink
 
 # 🧲Requirements
 
-- **7-Zip**
+- **7-Zip or WinRAR**
 - **cURL**
 - **API KEYS**
 
@@ -45,20 +45,23 @@ powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/mag
 
 curl -fsSL https://raw.githubusercontent.com/magnum357i/mpv-subfinder/HEAD/installers/linux.sh | sh
 
-##### 7-Zip (Windows Only)
+##### 7-Zip/WinRAR (Windows Only)
 
 ### Manual
 
-1. Install 7-Zip.
-2. Add the 7-Zip installation directory to your PATH.
+1. Install 7-Zip/WinRAR.
+2. Add the 7-Zip/WinRAR installation directory to your PATH.
 
 Typical locations:
 - C:\Program Files\7-Zip
 - C:\Program Files (x86)\7-Zip
+- C:\Program Files\WinRAR
+- C:\Program Files (x86)\WinRAR
 
 ### Automatic
 
 winget install 7zip.7zip
+winget install winrar
 
 ```
 
@@ -114,13 +117,13 @@ I don't plan to add every subtitle site, but I can add these sites if anyone req
 # ⚙️Configuration
 
 ```ini
-# Sites to enable (available values: subsource,subdl,altyazidb,turkcealtyazi,opensubtitles)
+# Sites to Enable (Available Values: subsource,subdl,altyazidb,turkcealtyazi,opensubtitles)
 sites_to_search=subsource
 
-# Default search language on launch
+# Default Search Language on Launch
 preferred_language=en
 
-# Prioritizes subtitle rows matching the video quality
+# Prioritizes subtitle rows matching the video quality.
 smart_sorting=yes
 
 # User Agent for cURL
@@ -134,8 +137,11 @@ archive_types=zip,rar,7z
 # I don't want AI translations.
 block_ai=no
 
+# Choose a program to open the archive. (Available Values: 7zip, winrar)
+extract_engine=7zip
+
 # SECRETS
-# Credentials format is username:password
+# Credentials format is username:password.
 
 api_subsource=
 api_subdl=
@@ -179,6 +185,11 @@ Saves subtitles in the same folder as the video using its filename for **Plex** 
 Zootopia (2016) 1080P DSNP WEB-DL DDP5.1 Atmos H264.mkv
 Zootopia (2016) 1080P DSNP WEB-DL DDP5.1 Atmos H264.en.srt
 ```
+
+# Color Meanings
+- **red background:** ai
+- **green background:** matched
+- **yellow site color:** imdb search
 
 # 🔥Important Notes
 - To ensure accurate subtitle matching, the video directory should only contain episodes from the same series.

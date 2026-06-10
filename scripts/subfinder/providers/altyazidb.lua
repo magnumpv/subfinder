@@ -31,6 +31,8 @@ function site:getPage()
 
     if query.imdbId then
 
+        self.searchMode = "imdb"
+
         content = request:timeout(10):headers({["X-API-Key"] = config.api_altyazidb}):sendRequest(self.url.api.."/search", {
 
             imdb_id = query.imdbId,
@@ -44,6 +46,8 @@ function site:getPage()
     --title search
 
     if not (content and content.data and content.data[1]) then
+
+        self.searchMode = "title"
 
         content = request:timeout(10):headers({["X-API-Key"] = config.api_altyazidb}):sendRequest(self.url.api.."/search", {
 

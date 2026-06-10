@@ -281,7 +281,13 @@ end
 
 function this.unpackArchive(source, target)
 
-    this.runCommand({"7z", "x", source, "-o"..target, "-y"})
+    if config.extract_engine == "winrar" then
+
+        this.runCommand({"winrar", "x", "-o+", "-ibck", "-inul", source, target})
+    else
+
+        this.runCommand({"7z", "x", source, "-o"..target, "-y"})
+    end
 end
 
 function this.copyFile(source, target)

@@ -92,11 +92,11 @@ function gui:text(str)
     result = result.."\\an"..(self.p.align or 7)
     result = result.."\\pos("..self.p.x..","..self.p.y..")"
     result = result.."\\c&H"..(self.p.color or colors.text).."&"
-    result = result.."\\bord0"
     result = result.."\\fs"..config.text_size
+    result = result.."\\bord0"
     if self.p.bold  then result = result.."\\b1"                                                 end
     if self.p.alpha then result = result.."\\alpha&H"..self.converter.opacity(self.p.alpha).."&" end
-    if self.p.clip  then result = result.."\\clip("..self.p.clip..")" end
+    if self.p.clip  then result = result.."\\clip("..self.p.clip..")"                            end
 
     self.ass:new_event()
     self.ass.text = self.ass.text.. "{"..result.."}"..str

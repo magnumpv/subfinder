@@ -9,10 +9,10 @@ local subtitle = {
 function subtitle:prepareTitle(title)
 
     title = title:lower()
-    title = title:gsub("%d%d%d%dx%d+", "") --1920x1080, 1280x720
-    title = title:gsub("%d%d%d%d["..self.spaces.."]x["..self.spaces.."]%d+", "") --1920 x 1080, 1280 x 720
-    title = title:gsub("%d%d%d+p", "") --720p, 1080p
+    title = title:gsub("%d%d%d%dx%d+p?", "") --1920x1080, 1280x720
+    title = title:gsub("%d%d%d%d["..self.spaces.."]x["..self.spaces.."]%d+p?", "") --1920 x 1080, 1280 x 720
     title = title:gsub("["..self.spaces.."]x%d%d%d", "") --x264, x265
+    title = title:gsub("[257]%.[01]", "")
 
     return title
 end
@@ -34,8 +34,8 @@ function subtitle:getEpisodeNumber(title)
     or string.match(title, "#0*(%d+)") --> #3
 
     --last resort
-    or string.match(title, "0*(%d+)["..self.spaces.."]%-["..self.spaces.."]") --> 03 -
-    or string.match(title:gsub("%[[^%]]*%]", ""):gsub("%([^%)]*%)", ""), "["..self.spaces.."]0*(%d+)%s*$")) --> 3$
+    or string.match(" "..title, "["..self.spaces.."]0*(%d+)["..self.spaces.."]%-["..self.spaces.."]") --> 03 -
+    or string.match(title:gsub("%[[^%]]*%]", ""):gsub("%([^%)]*%)", ""), "["..self.spaces.."]%d(%d+)%s*$")) --> 3$
 end
 
 function subtitle:getEpisodeRange(title)

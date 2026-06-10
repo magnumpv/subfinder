@@ -2,7 +2,7 @@
 
 ╔════════════════════════════════╗
 ║          MPV subfinder         ║
-║              v1.1.1            ║
+║              v1.1.2            ║
 ╚════════════════════════════════╝
 
 https://github.com/magnum357i/mpv-subfinder
@@ -77,7 +77,7 @@ titleProperties = {}
 app = {
 
     name              = "mpvsubfinder",
-    version           = "1.1.1",
+    version           = "1.1.2",
     api_tmdb          = "108862d1305e0848f2a0874ca1bf5098",
     api_opensubtitles = "R3vsYHv28E3JIL288Fv3YSoqmablRACD"
 }
@@ -326,21 +326,27 @@ end
 local function cleanTitle()
 
     local title = h.removeExt(titleProperties.original)
-
-    title = title:gsub("%d%d%d%d[%s_]+x[%s_]+%d%d%d", "")
+    title       = title:gsub("%[[A-Za-z0-9][A-Za-z0-9][A-Za-z0-9][A-Za-z0-9][A-Za-z0-9][A-Za-z0-9][A-Za-z0-9][A-Za-z0-9]%]", "") --remove crc
 
     title =
-       title:match("^(.-)S%d+[%s%.%-]*E?%d+")
-    or title:match("(.-)[%s_]%-[%s_]%d+")
-    or title:match("^(.-)19%d%d[^pix]")
-    or title:match("^(.-)20%d%d[^pix]")
-    or title:match("^(.-)%d+p")
+       title:match("(.-)[Ss]%d+["..subtitle.spaces.."x]*[Ee]?%d+")
+    or title:match("(.-)[%.%s_]%-[%.%s_]%d+")
+    or title:match("(.-)19%d%d[^pix]")
+    or title:match("(.-)20%d%d[^pix]")
+    or title:match("(.-)[Ee]%d+")
+    or title:match("(.-)#%d+")
+
+    --last resort
+    or title:match("(.-)OVA")
+    or title:match("(.-)%d+[Pp]")
+    or title:match("(.-)["..subtitle.spaces.."]%d%d+["..subtitle.spaces.."]")
     or title
 
     title = title:gsub("%[[^%]]*%]", ""):gsub("%([^%)]*%)", "")
     title = title:gsub("[%(%[]", "")
     title = title:gsub("[%._]", " ")
     title = title:gsub("[%s%-]+$", "")
+    title = title:gsub("[Ee]pisode%s*$", "")
     if titleProperties.year then title = title:gsub(titleProperties.year, "") end
     title = title:gsub("%s+", " ")
     title = title:gsub("^%s*(.-)%s*$", "%1")
@@ -1206,5 +1212,26 @@ mp.observe_property("display-hidpi-scale", "native", function (name, value)
     if opened then fillData() render() end
 end)
 
-mp.add_key_binding(nil, "subfinder",           toggle)
-mp.add_key_binding(nil, "subfinder_pastelink", pasteLink)
+mp.add_forced_key_binding(nil, "subfinder", function()
+
+    if not opened then
+
+        toggle()
+    else
+
+        toggle()
+        writeResultsToCache()
+        reset()
+    end
+end)
+mp.add_forced_key_binding(nil, "subfinder_pastelink", function ()
+
+    if opened then
+
+        toggle()
+        writeResultsToCache()
+        reset()
+    end
+
+    pasteLink()
+end)

@@ -186,7 +186,7 @@ Zootopia (2016) 1080P DSNP WEB-DL DDP5.1 Atmos H264.mkv
 Zootopia (2016) 1080P DSNP WEB-DL DDP5.1 Atmos H264.en.srt
 ```
 
-# Color Meanings
+# 🎈Color Meanings
 - **red background:** ai
 - **green background:** matched
 - **yellow site color:** imdb search

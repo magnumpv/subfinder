@@ -11,6 +11,7 @@ By default, no keys are assigned. You can create your own bindings in `input.con
 ```
 Ctrl+f script-binding subfinder
 Ctrl+F script-binding subfinder_pastelink
+Ctrl+i script-binding subfinder_goto
 ```
 
 # 🧲Requirements
@@ -62,7 +63,6 @@ Typical locations:
 
 winget install 7zip.7zip
 winget install winrar
-
 ```
 
 2. Set up the API keys.
@@ -140,6 +140,10 @@ block_ai=no
 # Choose a program to open the archive. (Available Values: 7zip, winrar)
 extract_engine=7zip
 
+# Go to URL (Available Tags: <imdbid>, <title>)
+goto_url_formovies=https://www.imdb.com/title/<imdbid>/
+goto_url_forseries=https://www.imdb.com/title/<imdbid>/
+
 # SECRETS
 # Credentials format is username:password.
 
@@ -176,6 +180,22 @@ tag_right_margin=8
 - **s**: Season filter
 - **e**: Episode filter
 - **page**: Page filter (default: 1)
+
+# 🚀Go to URL
+You can open the movie or show you are watching on your preferred site with a single key press. Add the following line to your `input.conf` file:
+
+```
+Ctrl+i script-binding subfinder_goto
+```
+
+And modify these lines in the `subfinder.conf` file if you'd rather go with a site other than IMDb:
+
+```ini
+goto_url_formovies=https://www.imdb.com/title/<imdbid>/
+goto_url_forseries=https://www.imdb.com/title/<imdbid>/
+```
+
+Or you can use it: [IMDb Quick Search](https://greasyfork.org/en/scripts/427320-imdb-quick-search)
 
 # 🥏Saving
 Saves subtitles in the same folder as the video using its filename for **Plex** and **Jellyfin** compatibility.

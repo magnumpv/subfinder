@@ -2,7 +2,7 @@
 
 ╔════════════════════════════════╗
 ║          MPV subfinder         ║
-║              v1.1.2            ║
+║              v1.1.3            ║
 ╚════════════════════════════════╝
 
 https://github.com/magnum357i/mpv-subfinder
@@ -17,7 +17,8 @@ local path            = require "lib/path"
 local h               = require "lib/helper"
 local subtitle        = require "lib/subtitle"
 local gui             = require "lib/gui"
-local request         = require "lib/base"
+local providerBase    = require "lib/base"
+local request         = require "lib/request"
 local msg             = require "mp.msg"
 local labelText       = "Search for subtitles:"
 local data            = {}
@@ -46,6 +47,8 @@ config = {
     archive_types             = "zip,rar,7z",
     block_ai                  = false,
     extract_engine            = "7zip", --7zip, winrar
+    goto_url_formovies        = "https://www.imdb.com/title/<imdbid>/", --<imdbid>, <title>
+    goto_url_forseries        = "https://www.imdb.com/title/<imdbid>/", --<imdbid>, <title>
 
     --SECRETS
     api_subsource             = "",
@@ -77,7 +80,7 @@ titleProperties = {}
 app = {
 
     name              = "mpvsubfinder",
-    version           = "1.1.2",
+    version           = "1.1.3",
     api_tmdb          = "108862d1305e0848f2a0874ca1bf5098",
     api_opensubtitles = "R3vsYHv28E3JIL288Fv3YSoqmablRACD"
 }
@@ -825,7 +828,7 @@ local function submit()
 
     showMessage(string.format("(%s) IMDb ID searching...", steps))
 
-    query.imdbId = request:findImdbId(query)
+    query.imdbId = providerBase:findImdbId(query)
     steps        = steps - 1
 
     for i, p in pairs(sites) do
@@ -904,6 +907,22 @@ local function togglePlayerControllers()
     end
 end
 
+local function setDefaultText()
+
+    if search.text == "" then
+
+        local searched = cleanTitle()
+
+        if titleProperties.episode and not titleProperties.season then titleProperties.season = 1                                   end
+        if titleProperties.year                                   then searched = searched.." "..titleProperties.year               end
+        if titleProperties.season                                 then searched = searched.." s:"..titleProperties.season           end
+        if titleProperties.episode                                then searched = searched.." e:"..titleProperties.episode          end
+        if config.preferred_language ~= ""                        then searched = searched.." language:"..config.preferred_language end
+
+        search.text = searched
+    end
+end
+
 local function toggle()
 
     togglePlayerControllers()
@@ -972,19 +991,7 @@ local function toggle()
         input.init()
         loadTitleProperties()
         readResultsFromCache()
-
-        if search.text == "" then
-
-            local searched = cleanTitle()
-
-            if titleProperties.episode and not titleProperties.season then titleProperties.season = 1                                   end
-            if titleProperties.year                                   then searched = searched.." "..titleProperties.year               end
-            if titleProperties.season                                 then searched = searched.." s:"..titleProperties.season           end
-            if titleProperties.episode                                then searched = searched.." e:"..titleProperties.episode          end
-            if config.preferred_language ~= ""                        then searched = searched.." language:"..config.preferred_language end
-
-            search.text = searched
-        end
+        setDefaultText()
 
         input.font_size    = config.text_size
         input.cursor_theme = config.cursor_color
@@ -1212,7 +1219,7 @@ mp.observe_property("display-hidpi-scale", "native", function (name, value)
     if opened then fillData() render() end
 end)
 
-mp.add_forced_key_binding(nil, "subfinder", function()
+mp.add_key_binding(nil, "subfinder", function()
 
     if not opened then
 
@@ -1224,7 +1231,8 @@ mp.add_forced_key_binding(nil, "subfinder", function()
         reset()
     end
 end)
-mp.add_forced_key_binding(nil, "subfinder_pastelink", function ()
+
+mp.add_key_binding(nil, "subfinder_pastelink", function ()
 
     if opened then
 
@@ -1234,4 +1242,27 @@ mp.add_forced_key_binding(nil, "subfinder_pastelink", function ()
     end
 
     pasteLink()
+end)
+
+mp.add_key_binding(nil, "subfinder_goto", function ()
+
+    if not opened then
+
+        loadTitleProperties()
+        setDefaultText()
+
+        local fillTags = function(link) return link:gsub("<imdbid>", query.imdbId or ""):gsub("<title>", request:urlEncode(query.title)) end
+        query          = getQueryParams()
+        local url      = providerBase:isSeries() and config.goto_url_forseries or config.goto_url_formovies
+
+        if url:find("<imdbid>", 1, true) then
+
+            query.imdbId = providerBase:findImdbId()
+
+            if not query.imdbId then mp.osd_message("IMDb ID not found!") return end
+        end
+
+        h.visitTo(fillTags(url))
+        reset()
+    end
 end)

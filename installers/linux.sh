@@ -7,22 +7,6 @@ PLUGIN_NAME="subfinder"
 CONFIG_DIR="$HOME/.config/mpv"
 TMP_DIR="/tmp/gitmpv$PLUGIN_NAME"
 
-# checking dependices...
-
-dependencies=(git,curl)
-missing_dependencies=false
-
-for dep in "${dependencies[@]}"; do
-    if ! command -v "$dep" >/dev/null 2>&1; then
-        echo "Error! '$dep' command not found. Please install it first."
-	    missing_dependencies=true
-    fi
-done
-
-if [ "$missing_dependencies" = true ]; then
-    exit 1
-fi
-
 # checking config path...
 
 if [ ! -d "$CONFIG_DIR" ]; then

@@ -2,7 +2,7 @@
 
 ╔════════════════════════════════╗
 ║          MPV subfinder         ║
-║              v1.1.3            ║
+║              v1.1.4            ║
 ╚════════════════════════════════╝
 
 https://github.com/magnum357i/mpv-subfinder
@@ -38,7 +38,7 @@ query = {}
 
 config = {
 
-    sites_to_search           = "", --subsource,subdl,altyazidb,turkcealtyazi,opensubtitles
+    sites_to_search           = "", --subsource,altyazidb,turkcealtyazi,opensubtitles
     preferred_language        = "en",
     smart_sorting             = false,
     useragent                 = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
@@ -47,12 +47,12 @@ config = {
     archive_types             = "zip,rar,7z",
     block_ai                  = false,
     extract_engine            = "7zip", --7zip, winrar
+    append_source_to_filename = false,
     goto_url_formovies        = "https://www.imdb.com/title/<imdbid>/", --<imdbid>, <title>
     goto_url_forseries        = "https://www.imdb.com/title/<imdbid>/", --<imdbid>, <title>
 
     --SECRETS
     api_subsource             = "",
-    api_subdl                 = "",
     api_altyazidb             = "",
     credentials_opensubtitles = "", --username:password
 
@@ -80,7 +80,7 @@ titleProperties = {}
 app = {
 
     name              = "mpvsubfinder",
-    version           = "1.1.3",
+    version           = "1.1.4",
     api_tmdb          = "108862d1305e0848f2a0874ca1bf5098",
     api_opensubtitles = "R3vsYHv28E3JIL288Fv3YSoqmablRACD"
 }
@@ -372,6 +372,13 @@ local function fillData()
     data.barHeight                      = (data.lineCount * data.lineHeight) / (data.resultCount * data.lineHeight) * (data.lineCount * data.lineHeight)
     data.boxHeight                      = data.resultCount > 0 and config.text_size + config.padding * 2 + data.lineHeight * data.lineCount + config.padding or config.text_size + config.padding * 2
 
+    if config.append_source_to_filename and not data.downloaded then
+
+        local attached = getAttachedSubtitle()
+
+        if attached then data.downloaded = string.match(attached, "([^%.]-)%."..currentLanguage.."%.[a-z][a-z][a-z]$") end
+    end
+
     panel:setResolution(data.screenWidth, data.screenHeight)
 end
 
@@ -408,8 +415,7 @@ local function render()
 
             local posX, posY
             local selected = currentIndex == k
-            local faded   = false
-            --local faded   = (search.results[k].installed and not selected) and true or false
+            local faded    = (data.downloaded and not selected and search.results[k].id and data.downloaded == search.results[k].provider..search.results[k].id)
 
             --ai or sameversion
 
@@ -516,7 +522,7 @@ local function render()
                 panel:properties({x = posX + (data.boxWidth / 100 * config.column_width), y = posY, color = selected and colors.hover or colors.subtext, align = 4, alpha = faded and 150 or 0}):icon("date", search.results[k].date)
             end
 
-            --download
+            --downloads
 
             if search.results[k].downloads then
 
@@ -528,7 +534,7 @@ local function render()
 
             --site name
 
-            panel:properties({x = posX, y = posY, align = 6, color = search.results[k].searchMode == "imdb" and colors.imdb or (selected and colors.hover or colors.text), bold = true}):text(search.results[k].provider)
+            panel:properties({x = posX, y = posY, align = 6, alpha = faded and 150 or 0, color = search.results[k].searchMode == "imdb" and colors.imdb or (selected and colors.hover or colors.text), bold = true}):text(search.results[k].provider)
 
             lineY = lineY + data.lineHeight
             m     = m + 1
@@ -591,6 +597,47 @@ local function loadTitleProperties()
     end
 end
 
+function getAttachedSubtitle()
+
+    local result
+
+    local isWindows = package.config:sub(1,1) == "\\"
+
+    if isWindows then
+
+        result = h.runCommand({
+
+            "powershell",
+            "-NoProfile",
+            "-Command",
+            string.format("$extList = New-Object 'System.Collections.Generic.HashSet[string]' ([string[]]@(%s), [System.StringComparer]::OrdinalIgnoreCase); [System.IO.Directory]::EnumerateFiles(\"%s\", \"%s*.%s*\") | Where-Object { $extList.Contains([System.IO.Path]::GetExtension($_)) } | Select-Object -First 1", "'."..config.subtitle_types:gsub(",", "','.").."'", getPath("video"), h.removeExt(titleProperties.original), currentLanguage)
+        })
+    else
+
+        result = h.runCommand({
+
+            "sh",
+            "-c",
+            string.format('find "%s" -maxdepth 1 -type f -name "%s*" | grep -E -i -m 1 "\\.%s\\.(%s)$"', getPath("video"), h.removeExt(titleProperties.original:gsub("%[", "\\["):gsub("%]", "\\]")), currentLanguage, config.subtitle_types:gsub(",", "|"))
+        })
+    end
+
+    if result.status == 0 and result.stdout ~= "" then
+
+        local currentFile = result.stdout:gsub("[\r\n]", "")
+
+        if string.find(config.subtitle_types, h.getExt(currentFile), 1, true) then --for fun
+
+            return currentFile
+        else
+
+            msg.error("The current subtitle is not in a valid format.")
+        end
+    end
+
+    return nil
+end
+
 local function startDownload(link, provider)
 
     mp.osd_message("Please wait...", 30)
@@ -604,17 +651,28 @@ local function startDownload(link, provider)
 
     if archiveFiles then h.unpackArchive(path.join({getPath("cache/subtitles"), archiveFiles[1]}), getPath("cache/subtitles")) end
 
-    local subFiles = h.listFiles(getPath("cache/subtitles"), "ass,srt")
+    local subFiles = h.listFiles(getPath("cache/subtitles"), config.subtitle_types)
 
     if not (subFiles and subFiles[1]) then mp.osd_message("Subtitle file not found.", 3) return end
 
     local attachSubtitle = function(subtitleFile, videoFile)
 
-        local attachedSubtitleFile = path.join({getPath("video"), table.concat({h.removeExt(videoFile), currentLanguage, h.getExt(subtitleFile)}, ".")})
+        --delete the current subtitle
 
-        if path.checkPath(attachedSubtitleFile) then path.removeFile(attachedSubtitleFile) end
+        local attached = getAttachedSubtitle()
 
-        h.copyFile(path.join({getPath("cache/subtitles"), subtitleFile}), attachedSubtitleFile)
+        if attached then path.removeFile(attached) end
+
+        --move
+
+        local prefix = path.join({getPath("video"), h.removeExt(titleProperties.original)})
+        local name   = prefix
+
+        if config.append_source_to_filename then name = name.."."..provider.name..((search.results[currentIndex] and search.results[currentIndex].id) and search.results[currentIndex].id or "") end
+
+        name = name.."."..currentLanguage.."."..h.getExt(subtitleFile)
+
+        h.copyFile(path.join({getPath("cache/subtitles"), subtitleFile}), name)
     end
 
     local videos        = h.listFiles(getPath("video"), config.video_types)
@@ -828,14 +886,14 @@ local function submit()
 
     showMessage(string.format("(%s) IMDb ID searching...", steps))
 
-    query.imdbId = providerBase:findImdbId(query)
+    query.imdbId = providerBase:findImdbId()
     steps        = steps - 1
 
     for i, p in pairs(sites) do
 
         showMessage(string.format("(%s) Getting subtitles from %s...", steps, p))
 
-        local rows, searchMode = providers[p]:findSubtitles(query)
+        local rows, searchMode = providers[p]:findSubtitles()
 
         if rows then
 
@@ -1196,6 +1254,85 @@ function titleMetadataTest()
     h.log2(subtitle:properties(testTitle))
 end
 
+function checkApiStatuses()
+
+    if not opened then
+
+        path.removeDir(getPath("cache/subtitles"))
+        path.createDir(getPath("cache/subtitles"))
+
+        request.debug      = true
+        local status       = {success = {}, fail = {}}
+        local lastSubCount = 0
+
+        for _, p in pairs({"subsource", "opensubtitles", "turkcealtyazi", "altyazidb"}) do
+
+            providers[p]:testQuery()
+
+            msg.warn(string.format("[%s] Checking page...", p))
+
+            local pageContent = providers[p]:getPage()
+
+            if pageContent then
+
+                msg.info(string.format("[%s] Page found", p))
+                msg.warn(string.format("[%s] Checking subtitles...", p))
+
+                local subtitles = providers[p]:parse(pageContent)
+
+                if subtitles and #subtitles > 0 then
+
+                    h.log(subtitles)
+
+                    msg.info(string.format("[%s] Subtitles found", p))
+                    msg.warn(string.format("[%s] Subtitle downloading...", p))
+
+                    providers[p]:download(subtitles[1].downloadLink, getPath("cache/subtitles"))
+
+                    local archiveFiles = h.listFiles(getPath("cache/subtitles"), config.archive_types)
+
+                    if archiveFiles then
+
+                        h.unpackArchive(path.join({getPath("cache/subtitles"), archiveFiles[1]}), getPath("cache/subtitles"))
+                    end
+
+                    local subFiles = h.listFiles(getPath("cache/subtitles"), config.subtitle_types)
+
+                    if subFiles then
+
+                        local subCount = #subFiles
+
+                        if lastSubCount ~= subCount then
+
+                            table.insert(status.success, p)
+                        else
+
+                            table.insert(status.fail, p)
+                        end
+
+                        lastSubCount = subCount
+                    else
+
+                        table.insert(status.fail, p)
+                    end
+                else
+
+                    msg.error(string.format("[%s] Subtitles not found!", p))
+                end
+            else
+
+                msg.error(string.format("[%s] Page not found!", p))
+            end
+        end
+
+        request.debug = false
+
+        msg.info("[RESULT]")
+        msg.info("Success: "..table.concat(status.success, ", "))
+        msg.info("Failed: "..table.concat(status.fail, ", "))
+    end
+end
+
 mp.observe_property("mouse-pos", "native", function()
 
     if opened then
@@ -1266,3 +1403,5 @@ mp.add_key_binding(nil, "subfinder_goto", function ()
         reset()
     end
 end)
+
+mp.add_key_binding(nil, "subfinder_checkapistatuses", checkApiStatuses)

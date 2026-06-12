@@ -175,15 +175,11 @@ function this.assColor(rgbColor)
     return b..g..r
 end
 
-function this.log(str)
+function this.log(str, level)
 
-    if type(str) == "table" then
+    level = level or "info"
 
-        print(utils.format_json(str))
-    else
-
-        print(str)
-    end
+    msg[level](type(str) == "table" and utils.format_json(str) or str)
 end
 
 function this.log2(t, indent)
@@ -275,7 +271,7 @@ function this.visitTo(link)
 
         link = link:gsub("EOF", "")
 
-        return this.runCommand({"sh", "-c", "xdg-open <<'EOF'\n"..link.."\nEOF"})
+        return this.runCommand({"sh", "-c", "xargs xdg-open <<'EOF'\n"..link.."\nEOF"})
     end
 end
 
@@ -310,7 +306,9 @@ end
 
 function this.removeExt(filename)
 
-    return filename:gsub("%.[^%.]-$", "")
+    filename = filename:gsub("%.[^%.]-$", "")
+
+    return filename
 end
 
 function this.renameFile(file,newname)

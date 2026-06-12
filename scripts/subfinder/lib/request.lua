@@ -1,7 +1,7 @@
 local h      = require "lib/helper"
 local utils  = require "mp.utils"
 local msg    = require "mp.msg"
-local this   = {data = {}}
+local this   = {data = {}, debug = false}
 this.__index = this
 
 function this:buildUrl(link, params)
@@ -136,6 +136,8 @@ function this:sendRequest(link, params)
 
         return nil
     end
+
+    if self.debug then h.log(res) end
 
     return utils.parse_json(res.stdout) or res.stdout
 end

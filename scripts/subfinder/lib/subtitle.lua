@@ -11,8 +11,10 @@ function subtitle:prepareTitle(title)
     title = title:lower()
     title = title:gsub("%d%d%d%dx%d+p?", "") --1920x1080, 1280x720
     title = title:gsub("%d%d%d%d["..self.spaces.."]x["..self.spaces.."]%d+p?", "") --1920 x 1080, 1280 x 720
-    title = title:gsub("["..self.spaces.."]x%d%d%d", "") --x264, x265
-    title = title:gsub("[257]%.[01]", "")
+    title = title:gsub("%d+p", "") --1920p
+    title = title:gsub("["..self.spaces.."][xh]%d%d%d", "") --x264, x265, h264, h265
+    title = title:gsub("h["..self.spaces.."]%d%d%d", "") --h 264, h 265
+    title = title:gsub("[257]%.[01]", "") --5.1 etc.
 
     return title
 end
@@ -123,7 +125,7 @@ function subtitle:properties(title)
 
     local yearList = {}
 
-    for y in string.gmatch(title:gsub("%d%d%d%d%s*[pix]", ""), "(%d%d%d%d)") do  --progressive, interlaced, 1920x1080
+    for y in string.gmatch(title, "%d%d%d%d") do
 
         y = tonumber(y)
 

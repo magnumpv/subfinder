@@ -149,6 +149,7 @@ function site:parse(content)
 
         return subtitle:newLine({
 
+            id           = row:match('href="/sub/(%d+)/[^"]*"'),
             title        = request:stripTags(row:match('<a itemprop="url"[^>]->(.-)</a>')).." - "..request:stripTags(row:match('<div class="ripdiv">(.-)</div>')),
             pageLink     = row:match('href="(/sub/[^"]*)"'),
             downloadLink = row:match('href="(/sub/[^"]*)"'),
@@ -215,6 +216,13 @@ function site:download(link, savePath)
     if not (form.idid and form.altid and form.sidid) then msg.error("Missing form value!") return end
 
     request:timeout(15):postData(form):download(savePath):sendRequest(self.url.site.."/ind")
+end
+
+function site:testQuery()
+
+    query.tags          = {}
+    query.tags.language = "tr"
+    query.imdbId        = "tt0117500"
 end
 
 return site

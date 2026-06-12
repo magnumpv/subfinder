@@ -289,4 +289,11 @@ function site:moviehash()
     return string.format("%08x%08x", hi, lo)
 end
 
+function site:testQuery()
+
+    query.tags          = {}
+    query.tags.language = "en"
+    query.imdbId        = "tt0117500"
+end
+
 return site

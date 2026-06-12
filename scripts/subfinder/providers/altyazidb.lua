@@ -88,7 +88,7 @@ function site:parse(content)
                 id           = row.id,
                 title        = (row.releases and row.releases[1]) and row.releases[1] or row.translator,
                 pageLink     = query.imdbId and string.format("/onizleme.php?type=imdb&id=%s", query.imdbId) or nil,
-                downloadLink = row.download_url and row.download_url:gsub(".+(/download)", "%1") or nil,
+                downloadLink = row.download_url and row.download_url:gsub("https://altyazidb%.com/api/v1", "") or nil,
                 uploader     = row.uploader,
                 downloads    = row.downloads,
                 forced       = row.forced and row.forced == 1,
@@ -106,7 +106,7 @@ function site:download(link, savePath)
 
     if not link then msg.error("Link not found!") return end
 
-    if string.find(link, "^/download%?sub_id=%d+$") then --from api
+    if string.find(link, "^/subtitle%?sub_id=%d+$") then --from api
 
         link = self.url.api..link
     else
@@ -115,6 +115,13 @@ function site:download(link, savePath)
     end
 
     request:timeout(15):headers({["X-API-Key"] = config.api_altyazidb}):download(savePath):sendRequest(link)
+end
+
+function site:testQuery()
+
+    query.tags          = {}
+    query.tags.language = "tr"
+    query.imdbId        = "tt0117500"
 end
 
 return site

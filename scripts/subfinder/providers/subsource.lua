@@ -186,4 +186,11 @@ function site:filter(t, isSeries)
     return true
 end
 
+function site:testQuery()
+
+    query.tags          = {}
+    query.tags.language = "en"
+    query.imdbId        = "tt0117500"
+end
+
 return site

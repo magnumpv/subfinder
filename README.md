@@ -69,7 +69,7 @@ winget install winrar
 3. Add the providers you want to use to `sites_to_search`.
 4. Assign shortcuts.
 
-# 🎮 Usage
+# 🎮Usage
 
 1. Press `Ctrl+f` and you will see matching subtitles.
 2. Click or press `Enter` to download the selected subtitle.
@@ -87,7 +87,7 @@ https://github.com/user-attachments/assets/ffb7a48a-d19d-4536-9d5c-76f5acdcbea5
 | <kbd>Ctrl+Enter</kbd> | Go to subtitle page |
 | <kbd>Esc</kbd>        | Exit                |
 
-# Supported Themes
+# 🖌️Supported Themes
 
 Controllers are disabled when the interface is opened in these themes:
 
@@ -99,8 +99,7 @@ Controllers are disabled when the interface is opened in these themes:
 | Source                | Subtitle Languages  | Requires API Key             | Paste Link |
 |-----------------------|---------------------|------------------------------|------------|
 | **altyazidb**         | turkish, english    | ✔️                           | ❌        |
-| **opensubtitles**     | all                 | to increase your usage quota | ❌        |
-| **subdl**             | all                 | ✔️                           | ❌        |
+| **opensubtitles**     | all                 | to increase your daily quota | ❌        |
 | **subsource**         | all                 | ✔️                           | ✔️        |
 | **turkcealtyazi**     | turkish, english    | ❌                           | ✔️        |
 
@@ -117,7 +116,7 @@ I don't plan to add every subtitle site, but I can add these sites if anyone req
 # ⚙️Configuration
 
 ```ini
-# Sites to Enable (Available Values: subsource,subdl,altyazidb,turkcealtyazi,opensubtitles)
+# Sites to Enable (Available Values: subsource,altyazidb,turkcealtyazi,opensubtitles)
 sites_to_search=subsource
 
 # Default Search Language on Launch
@@ -140,6 +139,10 @@ block_ai=no
 # Choose a program to open the archive. (Available Values: 7zip, winrar)
 extract_engine=7zip
 
+# Appends the download source information to the subtitle file name. (<moviename><sitename><subtitleid><lang>)
+# Note: Windows users may experience a half-second delay when opening the interface due to PowerShell startup overhead.
+append_source_to_filename=no
+
 # Go to URL (Available Tags: <imdbid>, <title>)
 goto_url_formovies=https://www.imdb.com/title/<imdbid>/
 goto_url_forseries=https://www.imdb.com/title/<imdbid>/
@@ -148,7 +151,6 @@ goto_url_forseries=https://www.imdb.com/title/<imdbid>/
 # Credentials format is username:password.
 
 api_subsource=
-api_subdl=
 api_altyazidb=
 credentials_opensubtitles=
 
@@ -195,7 +197,7 @@ goto_url_formovies=https://www.imdb.com/title/<imdbid>/
 goto_url_forseries=https://www.imdb.com/title/<imdbid>/
 ```
 
-Or you can use it: [IMDb Quick Search](https://greasyfork.org/en/scripts/427320-imdb-quick-search)
+Or you can use this: [IMDb Quick Search](https://greasyfork.org/en/scripts/427320-imdb-quick-search)
 
 # 🥏Saving
 Saves subtitles in the same folder as the video using its filename for **Plex** and **Jellyfin** compatibility.

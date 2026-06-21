@@ -151,6 +151,7 @@ goto_url_forseries=https://www.imdb.com/title/<imdbid>/
 # Credentials format is username:password.
 
 api_subsource=
+api_subdl=
 api_altyazidb=
 credentials_opensubtitles=
 

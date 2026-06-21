@@ -28,11 +28,27 @@ function this:urlEncode(str)
     return str
 end
 
+function this:htmlUnescape(str)
+
+    local encoded = {
+
+        ["&amp;"]  = "&",
+        ["&lt;"]   = "<",
+        ["&gt;"]   = ">",
+        ["&quot;"] = '"',
+        ["&#39;"]  = "'"
+    }
+
+    for k, v in pairs(encoded) do str = str:gsub(k, v) end
+
+    return str
+end
+
 function this:stripTags(str)
 
     if not str then return nil end
 
-    return str:gsub("<[^>]*>", ""):gsub("%s(.-)%s", "%1"):gsub("\t", "")
+    return str:gsub("<[^>]*>", ""):gsub("^%s*(.-)%s*$", "%1")
 end
 
 function this:userAgent(val)

@@ -2,7 +2,7 @@
 
 ╔════════════════════════════════╗
 ║          MPV subfinder         ║
-║              v1.1.4            ║
+║              v1.1.5            ║
 ╚════════════════════════════════╝
 
 https://github.com/magnum357i/mpv-subfinder
@@ -38,9 +38,9 @@ query = {}
 
 config = {
 
-    sites_to_search           = "", --subsource,altyazidb,turkcealtyazi,opensubtitles
+    sites_to_search           = "", --subsource,subdl,altyazidb,turkcealtyazi,opensubtitles
     preferred_language        = "en",
-    smart_sorting             = false,
+    sorting                   = "", --date, quality
     useragent                 = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
     video_types               = "mkv,mp4,avi,ts,m2ts,ogm,wmv",
     subtitle_types            = "srt,ass,ssa,vtt,sub,sup,pgs,smi,idx",
@@ -53,6 +53,7 @@ config = {
 
     --SECRETS
     api_subsource             = "",
+    api_subdl                 = "",
     api_altyazidb             = "",
     credentials_opensubtitles = "", --username:password
 
@@ -374,7 +375,7 @@ local function fillData()
 
     if config.append_source_to_filename and not data.downloaded then
 
-        local attached = getAttachedSubtitle()
+        local attached = getAttachedSubtitle(titleProperties.original)
 
         if attached then data.downloaded = string.match(attached, "([^%.]-)%."..currentLanguage.."%.[a-z][a-z][a-z]$") end
     end
@@ -519,7 +520,7 @@ local function render()
 
             if search.results[k].date then
 
-                panel:properties({x = posX + (data.boxWidth / 100 * config.column_width), y = posY, color = selected and colors.hover or colors.subtext, align = 4, alpha = faded and 150 or 0}):icon("date", search.results[k].date)
+                panel:properties({x = posX + (data.boxWidth / 100 * config.column_width), y = posY, color = selected and colors.hover or colors.subtext, align = 4, alpha = faded and 150 or 0}):icon("date", search.results[k].date.formatted)
             end
 
             --downloads
@@ -597,10 +598,9 @@ local function loadTitleProperties()
     end
 end
 
-function getAttachedSubtitle()
+function getAttachedSubtitle(videoFile)
 
     local result
-
     local isWindows = package.config:sub(1,1) == "\\"
 
     if isWindows then
@@ -610,7 +610,13 @@ function getAttachedSubtitle()
             "powershell",
             "-NoProfile",
             "-Command",
-            string.format("$extList = New-Object 'System.Collections.Generic.HashSet[string]' ([string[]]@(%s), [System.StringComparer]::OrdinalIgnoreCase); [System.IO.Directory]::EnumerateFiles(\"%s\", \"%s*.%s*\") | Where-Object { $extList.Contains([System.IO.Path]::GetExtension($_)) } | Select-Object -First 1", "'."..config.subtitle_types:gsub(",", "','.").."'", getPath("video"), h.removeExt(titleProperties.original), currentLanguage)
+            string.format("$extList = New-Object 'System.Collections.Generic.HashSet[string]' ([string[]]@(%s), [System.StringComparer]::OrdinalIgnoreCase); [System.IO.Directory]::EnumerateFiles(\"%s\", \"%s*.%s*\") | Where-Object { $extList.Contains([System.IO.Path]::GetExtension($_)) } | Select-Object -First 1",
+
+                "'."..config.subtitle_types:gsub(",", "','.").."'",
+                getPath("video"),
+                h.removeExt(videoFile),
+                currentLanguage
+            )
         })
     else
 
@@ -618,7 +624,13 @@ function getAttachedSubtitle()
 
             "sh",
             "-c",
-            string.format('find "%s" -maxdepth 1 -type f -name "%s*" | grep -E -i -m 1 "\\.%s\\.(%s)$"', getPath("video"), h.removeExt(titleProperties.original:gsub("%[", "\\["):gsub("%]", "\\]")), currentLanguage, config.subtitle_types:gsub(",", "|"))
+            string.format('find "%s" -maxdepth 1 -type f -name "%s*" | grep -E -i -m 1 "\\.%s\\.(%s)$"',
+
+                getPath("video"),
+                h.removeExt(videoFile:gsub("%[", "\\["):gsub("%]", "\\]")),
+                currentLanguage,
+                config.subtitle_types:gsub(",", "|")
+            )
         })
     end
 
@@ -640,62 +652,64 @@ end
 
 local function startDownload(link, provider)
 
-    mp.osd_message("Please wait...", 30)
+    local assStart = mp.get_property_osd("osd-ass-cc/0")
+    local assStop  = mp.get_property_osd("osd-ass-cc/1")
+
+    mp.osd_message(assStart.."{\\b1}Preparing...{\\b0}"..assStop, 30)
 
     path.removeDir(getPath("cache/subtitles"))
     path.createDir(getPath("cache/subtitles"))
 
+    mp.osd_message(assStart.."{\\b1}Downloading...{\\b0}"..assStop, 30)
+
     provider:download(link, getPath("cache/subtitles"))
 
+    mp.osd_message(assStart.."{\\b1}Starting attachment...{\\b0}"..assStop, 30)
+
+    local errorColor   = "3300AA"
     local archiveFiles = h.listFiles(getPath("cache/subtitles"), config.archive_types)
 
     if archiveFiles then h.unpackArchive(path.join({getPath("cache/subtitles"), archiveFiles[1]}), getPath("cache/subtitles")) end
 
-    local subFiles = h.listFiles(getPath("cache/subtitles"), config.subtitle_types)
+    local subtitles = h.listFiles(getPath("cache/subtitles"), config.subtitle_types)
 
-    if not (subFiles and subFiles[1]) then mp.osd_message("Subtitle file not found.", 3) return end
+    if not subtitles then mp.osd_message(assStart.."{\\b1\\c&H"..errorColor.."&}Subtitle file not found.{\\b0}"..assStop, 5) return end
 
     local attachSubtitle = function(subtitleFile, videoFile)
 
         --delete the current subtitle
 
-        local attached = getAttachedSubtitle()
+        local attached = getAttachedSubtitle(videoFile)
 
         if attached then path.removeFile(attached) end
 
         --move
 
-        local prefix = path.join({getPath("video"), h.removeExt(titleProperties.original)})
-        local name   = prefix
+        local name = ""
+        name       = name..path.join({getPath("video"), h.removeExt(videoFile)})
 
         if config.append_source_to_filename then name = name.."."..provider.name..((search.results[currentIndex] and search.results[currentIndex].id) and search.results[currentIndex].id or "") end
 
         name = name.."."..currentLanguage.."."..h.getExt(subtitleFile)
 
         h.copyFile(path.join({getPath("cache/subtitles"), subtitleFile}), name)
+
+        if videoFile == titleProperties.original and path.checkPath(name) then mp.commandv("sub-add", name, "select") end
     end
 
-    local videos        = h.listFiles(getPath("video"), config.video_types)
-    local subtitles     = h.listFiles(getPath("cache/subtitles"), config.subtitle_types)
-    local videoCount    = videos    and #videos    or 0
-    local subtitleCount = subtitles and #subtitles or 0
-
-    if subtitleCount == 0 then mp.osd_message("Subtitle file not found.", 3) return end
-
-    local subtitleOfThisVideo   = ""
-    local attachedSubtitleCount = 0
+    local videos = h.listFiles(getPath("video"), config.video_types)
+    local loaded = false
 
     if not (query.tags and query.tags.s) then
 
-        attachSubtitle(subtitles[1], titleProperties.original)
+        loaded = true
 
-        subtitleOfThisVideo   = subtitles[1]
-        attachedSubtitleCount = attachedSubtitleCount + 1
+        attachSubtitle(subtitles[1], titleProperties.original)
     else
 
         local episodes = {}
 
-        for _, s in pairs(subtitles) do
+        for _, s in ipairs(subtitles) do
 
             local eNumber = subtitle:getEpisodeNumber(s)
 
@@ -711,7 +725,7 @@ local function startDownload(link, provider)
             end
         end
 
-        for _, v in pairs(videos) do
+        for _, v in ipairs(videos) do
 
             local eNumber = subtitle:getEpisodeNumber(v)
 
@@ -732,41 +746,43 @@ local function startDownload(link, provider)
             end
         end
 
-        for eIndex, e in pairs(episodes) do
+        local episodeCount = h.tableCount(episodes)
+        local k            = 0
+
+        for _, e in pairs(episodes) do
+
+            k = k + 1
+
+            mp.osd_message(string.format(assStart.."{\\b1}Attaching... (%s/%s){\\b0}"..assStop, episodeCount, k), 30)
 
             if e.videos then
 
-                for vIndex, v in pairs(e.videos) do
+                for _, v in ipairs(e.videos) do
 
-                    local bestSubtitle = e.subtitles and #e.subtitles > 1 and h.findBestSubtitle(v, e.subtitles) or e.subtitles[1]
+                    local bestSubtitle = h.findBestSubtitle(v, e.subtitles)
 
                     if bestSubtitle then
 
-                        if v == titleProperties.original then subtitleOfThisVideo = bestSubtitle end
+                        loaded = true
 
                         attachSubtitle(bestSubtitle, v)
-
-                        attachedSubtitleCount = attachedSubtitleCount + 1
                     end
                 end
             end
         end
     end
 
-    if subtitleOfThisVideo ~= "" then
+    local resultMessage = ""
 
-        subtitleOfThisVideo = path.join({getPath("video"), table.concat({h.removeExt(titleProperties.original), currentLanguage, h.getExt(subtitleOfThisVideo)}, ".")})
+    if not loaded then
 
-        if path.checkPath(subtitleOfThisVideo) then mp.commandv("sub-add", subtitleOfThisVideo, "select") end
-    end
-
-    if attachedSubtitleCount > 0 then
-
-        mp.osd_message("Completed!", 3)
+        resultMessage = assStart.."{\\&cH"..errorColor.."&\\b1}Failed!{\\b0}"..assStop
     else
 
-        mp.osd_message("Failed!", 3)
+        resultMessage = assStart.."{\\b1}Completed!{\\b0}"..assStop
     end
+
+    mp.osd_message(resultMessage, 5)
 end
 
 local function getProviderFromLink(link)
@@ -876,7 +892,6 @@ local function submit()
 
     currentLanguage   = query.tags.language
     local sites       = h.splitString(config.sites_to_search)
-    local results     = {}
     local steps       = 1
     search.processing = true
 
@@ -911,31 +926,34 @@ local function submit()
 
     --sorting
 
-    if config.smart_sorting then
+    if config.sorting == "quality" and titleProperties.quality then
 
-        if titleProperties.quality then
+        h.reindex(search.results, "order") --to preserve order for equal values
 
-            h.reindex(results, "order")
+        local qualityOrder
 
-            local qualityOrder
+        if     titleProperties.quality == "bd"  then qualityOrder = {bd  = 3, web = 2, dvd = 1}
+        elseif titleProperties.quality == "web" then qualityOrder = {web = 3, bd  = 2, dvd = 1}
+        elseif titleProperties.quality == "dvd" then qualityOrder = {dvd = 3, web = 2, bd  = 1} end
 
-            if     titleProperties.quality == "bd"  then qualityOrder = {bd  = 3, web = 2, dvd = 1}
-            elseif titleProperties.quality == "web" then qualityOrder = {web = 3, bd  = 2, dvd = 1}
-            elseif titleProperties.quality == "dvd" then qualityOrder = {dvd = 3, web = 2, bd  = 1} end
+        table.sort(search.results, function(a, b)
 
-            table.sort(results, function(a, b)
+            local aQuality = qualityOrder[a.quality] or 0
+            local bQuality = qualityOrder[b.quality] or 0
 
-                local aQuality = qualityOrder[a.quality] or 0
-                local bQuality = qualityOrder[b.quality] or 0
+            return aQuality == bQuality and a.order < b.order or aQuality > bQuality
+        end)
+    elseif config.sorting == "date" then
 
-                return aQuality == bQuality and a.order < b.order or aQuality > bQuality
-            end)
-        end
-    end
+        h.reindex(search.results, "order") --to preserve order for equal values
 
-    for i, v in pairs(results) do
+        table.sort(search.results, function(a, b)
 
-        table.insert(search.results, v)
+            local aDate = a.date and a.date.raw or 0
+            local bDate = b.date and b.date.raw or 0
+
+            return aDate == bDate and a.order < b.order or aDate > bDate
+        end)
     end
 
     search.processing = false

@@ -158,15 +158,13 @@ function subtitle:newLine(t)
 
     info.downloads = self:formatK(t.downloads)
 
-    if info.date then
+    if info.date and info.date.y then
 
-        if info.date.d and info.date.m and info.date.y then
+        info.date = {
 
-            info.date = config.date_format:gsub("<mm>", info.date.m):gsub("<dd>", info.date.d):gsub("<yyyy>", info.date.y)
-        else
-
-            info.date = info.date
-        end
+            formatted = config.date_format:gsub("<mm>", info.date.m):gsub("<dd>", info.date.d):gsub("<yyyy>", info.date.y),
+            raw       = tonumber(info.date.y..info.date.m..info.date.d)
+        }
     end
 
     local p = (info.title and info.title ~= "") and self:properties(info.title) or {}

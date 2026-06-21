@@ -110,6 +110,7 @@ end
 
 function this:isSameVersion(releases)
 
+    if self.sameVersionAllKeyword and releases and type(releases) == "string" and string.find(releases:lower(), self.sameVersionAllKeyword, 1, true) then return true end
     if not (releases and titleProperties.version) then return nil end
 
     if type(releases) == "table" then
@@ -122,9 +123,7 @@ function this:isSameVersion(releases)
         return nil
     end
 
-    releases = releases:lower()
-
-    if string.find(releases, titleProperties.version) or (self.sameVersionAllKeyword and string.find(releases, self.sameVersionAllKeyword)) then return true end
+    if string.find(releases:lower(), titleProperties.version, 1, true) then return true end
 
     return nil
 end

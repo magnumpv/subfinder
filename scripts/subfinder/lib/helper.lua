@@ -5,6 +5,8 @@ local this  = {}
 
 function this.findBestSubtitle(videoFile, subtitleFiles)
 
+    if #subtitleFiles == 1 then return subtitleFiles[1] end
+
     local lastScore = 0
     local bestSubtitle
 
@@ -18,6 +20,15 @@ function this.findBestSubtitle(videoFile, subtitleFiles)
     end
 
     return bestSubtitle
+end
+
+function this.tableCount(t)
+
+    local count = 0
+
+    for _, _ in pairs(t) do count = count + 1 end
+
+    return count
 end
 
 function this.tokenize(str)

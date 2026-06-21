@@ -40,7 +40,6 @@ function site:getPage()
 
     local content
     local language = self:extendLanguage(query.tags.language)
-    local isSeries = self:isSeries()
 
     --imdb id search
 
@@ -52,8 +51,8 @@ function site:getPage()
 
             season_number   = query.tags.s,
             episode_number  = query.tags.e,
-            imdb_id         = isSeries and nil or query.imdbId:gsub("tt0*", ""),
-            parent_imdb_id  = isSeries and query.imdbId:gsub("tt0*", "") or nil,
+            imdb_id         = self:isSeries() and nil or query.imdbId:gsub("tt0*", ""),
+            parent_imdb_id  = self:isSeries() and query.imdbId:gsub("tt0*", "") or nil,
             languages       = language,
             ai_translated   = config.block_ai and "exclude" or nil,
             order_by        = "upload_date",
@@ -71,7 +70,7 @@ function site:getPage()
         content = request:timeout(10):userAgent(string.format("%s v%s", app.name, app.version)):headers({["Api-Key"] = app.api_opensubtitles, ["Accept"] = "application/json"}):sendRequest(self.url.api.."/subtitles", {
 
             query           = query.title:lower(),
-            type            = isSeries and "episode" or "movie",
+            type            = self:isSeries() and "episode" or "movie",
             season_number   = query.tags.s,
             episode_number  = query.tags.e,
             year            = query.year,
@@ -90,7 +89,6 @@ end
 
 function site:parse(content)
 
-    local isSeries      = self:isSeries()
     local rows          = {}
     local dateConverter = function(raw)
 

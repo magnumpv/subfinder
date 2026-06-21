@@ -36,7 +36,6 @@ function site:getPage()
 
     if not languageMap[query.tags.language] then return nil end
 
-    local isSeries = self:isSeries()
     local content
 
     --imdb id search
@@ -65,7 +64,7 @@ function site:getPage()
             sira     = "3",
             o        = "2",
             fragman  = "3",
-            tip      = isSeries and "2" or "1",
+            tip      = self:isSeries() and "2" or "1",
             taplimit = "0",
             taolimit = "0",
             plimit   = "0",
@@ -106,19 +105,25 @@ function site:parse(content)
         ["rip5"]    = "bd",
         ["rip9"]    = "web"
     }
+
     local languageMap = {
 
         tr = "flagtr",
         en = "flagen"
     }
-    local isSeries = self:isSeries()
-    local rows     = {}
 
-    local dateConverter = function(raw)
+    local rows        = {}
+    local currentYear = os.date("!%Y", os.time() + 3 * 60 * 60)
 
-        local year, month, day = string.match(raw, "(%d+)%-(%d+)%-(%d+)")
+    local dateConverter = function(str)
 
-        return year and {d = day, m = month, y = year} or nil
+        if not str then return nil end
+
+        local year = str:match("(%d+) yıl")
+
+        if not year then return nil end
+
+        return {d = "01", m = "01", y = tonumber(currentYear) - tonumber(year)}
     end
 
     local getSeason = function(str)
@@ -143,6 +148,11 @@ function site:parse(content)
         return {text = episodeStart == episodeEnd and episodeStart or episodeStart.."-"..episodeEnd, first = tonumber(episodeStart), last = tonumber(episodeEnd)}
     end
 
+    local getBulk = function(str)
+
+        return str:match("Paket") and true or nil
+    end
+
     local findValues = function(row)
 
         if not row:match('class="'..languageMap[query.tags.language]..'"') then return nil end
@@ -150,21 +160,22 @@ function site:parse(content)
         return subtitle:newLine({
 
             id           = row:match('href="/sub/(%d+)/[^"]*"'),
-            title        = request:stripTags(row:match('<a itemprop="url"[^>]->(.-)</a>')).." - "..request:stripTags(row:match('<div class="ripdiv">(.-)</div>')),
+            title        = request:htmlUnescape(request:stripTags(row:match('<a itemprop="url"[^>]->(.-)</a>'))).." - "..request:htmlUnescape(request:stripTags(row:match('<div class="ripdiv">(.-)</div>'))),
             pageLink     = row:match('href="(/sub/[^"]*)"'),
             downloadLink = row:match('href="(/sub/[^"]*)"'),
             uploader     = request:stripTags(row:match('<div class="algonderen">(.-)</div>')),
             downloads    = row:match('<div class="alindirme">(.-)</div>'),
-            date         = row:match('<div class="datediv">(.-)</div>'),
+            date         = dateConverter(row:match('<div class="datediv">(.-)</div>')),
             quality      = qualityMap[row:match('<div class="ripdiv">%s*<span class="([^"]-)">')] or qualityMap[row:match('<div class="alcevirmen">%s*<span class="([^"]-)">')],
-            hi           = row:match("/images/isitme.png") and true or false,
+            hi           = row:match("/images/isitme.png"),
             season       = getSeason(request:stripTags(row:match('<div class="alcd">(.-)</div>'))),
             episode      = getEpisode(request:stripTags(row:match('<div class="alcd">(.-)</div>'))),
+            bulk         = getBulk(request:stripTags(row:match('<div class="alcd">(.-)</div>'))),
             sameversion  = self:isSameVersion(request:stripTags(row:match('<div class="ripdiv">(.-)</div>')))
         })
     end
 
-    if isSeries then
+    if self:isSeries() then
 
         for row in content:gmatch('<div class="altsonsez1[^"]*sezon_'..query.tags.s..'[^"%d]*"[^>]*>(.-<div class="ta%-container">.-</div>%s*</div>)') do
 

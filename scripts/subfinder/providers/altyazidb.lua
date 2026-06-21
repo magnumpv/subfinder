@@ -51,12 +51,13 @@ function site:getPage()
 
         content = request:timeout(10):headers({["X-API-Key"] = config.api_altyazidb}):sendRequest(self.url.api.."/search", {
 
-            title   = query.title,
-            year    = query.year,
-            lang    = query.tags.language,
-            season  = query.tags.s,
-            episode = query.tags.e,
-            page    = query.page
+            title        = query.title,
+            year         = query.year,
+            lang         = query.tags.language,
+            season       = query.tags.s,
+            episode      = query.tags.e,
+            content_type = self:isSeries() and "series" or "movie",
+            page         = query.page
         })
     end
 
@@ -68,6 +69,18 @@ end
 function site:parse(content)
 
     local rows = {}
+
+    local dateConverter = function(raw)
+
+        local year, month, day = string.match(raw, "(%d+)%-(%d+)%-(%d+)")
+
+        return year and {d = day, m = month, y = year} or nil
+    end
+
+    local getTitle = function(row)
+
+        return (row.releases and row.releases[1]) and row.releases[1] or row.translator
+    end
 
     for _, row in ipairs(content) do
 
@@ -86,14 +99,16 @@ function site:parse(content)
             table.insert(rows, subtitle:newLine({
 
                 id           = row.id,
-                title        = (row.releases and row.releases[1]) and row.releases[1] or row.translator,
+                title        = self:isSeries() and string.format("(S:%s-B:%s) %s", row.season, row.episode, getTitle(row)) or getTitle(row),
                 pageLink     = query.imdbId and string.format("/onizleme.php?type=imdb&id=%s", query.imdbId) or nil,
                 downloadLink = row.download_url and row.download_url:gsub("https://altyazidb%.com/api/v1", "") or nil,
                 uploader     = row.uploader,
                 downloads    = row.downloads,
+                bulk         = (row.episode == "PAKET"),
                 forced       = row.forced and row.forced == 1,
                 foreign      = row.foreign_parts and row.foreign_parts == 1,
                 hi           = row.hearing_impaired and row.hearing_impaired == 1,
+                date         = row.date and dateConverter(row.date) or nil,
                 sameversion  = self:isSameVersion(row.releases)
             }))
         end

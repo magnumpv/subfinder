@@ -116,14 +116,14 @@ I don't plan to add every subtitle site, but I can add these sites if anyone req
 # ⚙️Configuration
 
 ```ini
-# Sites to Enable (Available Values: subsource,altyazidb,turkcealtyazi,opensubtitles)
+# Sites to Enable (Available Values: subsource,subdl,altyazidb,turkcealtyazi,opensubtitles)
 sites_to_search=subsource
 
 # Default Search Language on Launch
 preferred_language=en
 
-# Prioritizes subtitle rows matching the video quality.
-smart_sorting=yes
+# Sort Results (Available Values: quality, date)
+sorting=
 
 # User Agent for cURL
 useragent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36

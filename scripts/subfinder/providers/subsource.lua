@@ -40,7 +40,6 @@ function site:getPage()
 
     local content
     local language = self:extendLanguage(languages[query.tags.language])
-    local isSeries = self:isSeries()
 
     --imdb id search
 
@@ -68,7 +67,7 @@ function site:getPage()
             q          = query.title,
             year       = query.year,
             season     = query.tags.s,
-            type       = isSeries and "series" or "movie"
+            type       = self:isSeries() and "series" or "movie"
         })
 
         if not (content and content.data and content.data[1] and content.data[1].movieId and content.data) then return nil end
@@ -89,9 +88,9 @@ end
 
 function site:parse(content)
 
-    local isSeries      = self:isSeries()
     local qualityMap    = {web = "web", bluray = "bd"}
     local rows          = {}
+
     local dateConverter = function(raw)
 
         local year, month, day = string.match(raw, "(%d+)%-(%d+)%-(%d+)")
@@ -111,7 +110,7 @@ function site:parse(content)
             passed = false
         end
 
-        if passed and not self:filter(row, isSeries) then
+        if passed and not self:filter(row) then
 
             msg.warn(string.format("[%s] Subtitle skipped. Reason: %s", self.name, "episode"))
             h.log(row)
@@ -173,9 +172,9 @@ function site:getUploaderName(t)
     return nil
 end
 
-function site:filter(t, isSeries)
+function site:filter(t)
 
-    if isSeries and query.tags.e and t.releaseInfo and t.releaseInfo[1] then
+    if self:isSeries() and query.tags.e and t.releaseInfo and t.releaseInfo[1] then
 
         local episodeNumbers = subtitle:getEpisodeRange(t.releaseInfo[1])
 
